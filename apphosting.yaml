@@ -1,0 +1,43 @@
+# apphosting.yaml
+# Describes the resources and configuration for a backend in Firebase App Hosting.
+
+# Specifies the version of the App Hosting schema.
+# Must be "v1alpha1" for now.
+specVersion: v1alpha1
+
+# A list of environment variables that are available to your application at
+# build time and runtime.
+#
+# These variables are defined in a .env file in the root of your source
+# directory. You can also specify them directly in this file. See
+# https://firebase.google.com/docs/app-hosting/configure#env
+env:
+  - variable: BUNDLE_SOURCEMAP
+    value: "false"
+
+# Specifies the command to run to build your application.
+# The command is run from the root of your source directory.
+# This command can be overridden on a per-backend basis.
+build:
+  # The command that starts the build.
+  # If you are using a monorepo, you can change this command to build
+  # your specific application.
+  # For example:
+  #   run: npm run build -w my-app
+  run: npm run build
+
+# Specifies the command to run to start your application.
+# The command is run from the root of your source directory.
+start:
+  run: npm run start
+
+# The number of CPUs and the amount of memory to allocate to each of your
+# application's instances.
+resources:
+  cpu: 0.5
+  memoryMiB: 512
+
+# The minimum and maximum number of instances to run for your application.
+scaling:
+  minInstances: 0
+  maxInstances: 10
