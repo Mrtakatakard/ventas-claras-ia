@@ -35,13 +35,14 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.quoteService = void 0;
 const quoteRepository_1 = require("../repositories/quoteRepository");
-const invoiceService_1 = require("./invoiceService");
+const invoiceService = __importStar(require("./invoiceService"));
 const index_1 = require("../index");
 const functions = __importStar(require("firebase-functions"));
 exports.quoteService = {
     async createQuote(quoteData, userId) {
         const quoteId = index_1.db.collection("quotes").doc().id;
-        const newQuote = Object.assign(Object.assign({}, quoteData), { id: quoteId, userId, createdAt: new Date(), isActive: true });
+        const quoteNumber = `QT-${Date.now().toString().slice(-6)}`;
+        const newQuote = Object.assign(Object.assign({}, quoteData), { id: quoteId, userId, createdAt: new Date(), isActive: true, quoteNumber: quoteNumber, status: 'borrador' });
         await quoteRepository_1.quoteRepository.create(newQuote);
         return quoteId;
     },
@@ -86,7 +87,6 @@ exports.quoteService = {
         // For this iteration, let's assume the user will update the invoice number after creation or we use a placeholder.
         // Or better, we just copy the quote number as a reference.
         const invoiceData = {
-            invoiceNumber: `INV-${Date.now()}`, // Temporary placeholder, should be properly generated
             clientId: quote.clientId,
             clientName: quote.clientName,
             clientEmail: quote.clientEmail,
@@ -98,15 +98,11 @@ exports.quoteService = {
             discountTotal: quote.discountTotal,
             itbis: quote.itbis,
             total: quote.total,
-            payments: [],
-            balanceDue: quote.total,
-            status: 'pendiente',
             currency: quote.currency,
             quoteId: quote.id,
-            includeITBIS: quote.includeITBIS,
-            userId: userId
+            includeITBIS: quote.includeITBIS
         };
-        const invoiceId = await invoiceService_1.invoiceService.createInvoice(invoiceData, userId);
+        const invoiceId = await invoiceService.createInvoice(invoiceData, userId);
         // Update quote status
         await quoteRepository_1.quoteRepository.update(quoteId, { status: 'facturada' });
         return invoiceId;

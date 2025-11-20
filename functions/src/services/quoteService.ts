@@ -1,18 +1,22 @@
 import { quoteRepository } from "../repositories/quoteRepository";
-import { invoiceService } from "./invoiceService";
-import { Quote, Invoice } from "../types";
+import * as invoiceService from "./invoiceService";
+import { Quote } from "../types";
 import { db } from "../index";
 import * as functions from "firebase-functions";
 
 export const quoteService = {
-    async createQuote(quoteData: Omit<Quote, 'id' | 'createdAt' | 'isActive'>, userId: string): Promise<string> {
+    async createQuote(quoteData: Omit<Quote, 'id' | 'createdAt' | 'isActive' | 'quoteNumber' | 'status' | 'userId'>, userId: string): Promise<string> {
         const quoteId = db.collection("quotes").doc().id;
+        const quoteNumber = `QT-${Date.now().toString().slice(-6)}`;
+
         const newQuote: Quote = {
             ...quoteData,
             id: quoteId,
             userId,
             createdAt: new Date(),
-            isActive: true
+            isActive: true,
+            quoteNumber: quoteNumber,
+            status: 'borrador'
         };
         await quoteRepository.create(newQuote);
         return quoteId;
@@ -63,8 +67,7 @@ export const quoteService = {
         // For this iteration, let's assume the user will update the invoice number after creation or we use a placeholder.
         // Or better, we just copy the quote number as a reference.
 
-        const invoiceData: Omit<Invoice, 'id' | 'createdAt' | 'isActive'> = {
-            invoiceNumber: `INV-${Date.now()}`, // Temporary placeholder, should be properly generated
+        const invoiceData = {
             clientId: quote.clientId,
             clientName: quote.clientName,
             clientEmail: quote.clientEmail,
@@ -76,13 +79,9 @@ export const quoteService = {
             discountTotal: quote.discountTotal,
             itbis: quote.itbis,
             total: quote.total,
-            payments: [],
-            balanceDue: quote.total,
-            status: 'pendiente',
             currency: quote.currency,
             quoteId: quote.id,
-            includeITBIS: quote.includeITBIS,
-            userId: userId
+            includeITBIS: quote.includeITBIS
         };
 
         const invoiceId = await invoiceService.createInvoice(invoiceData, userId);

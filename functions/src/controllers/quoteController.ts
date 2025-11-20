@@ -1,31 +1,49 @@
-import { onCall, CallableRequest } from "firebase-functions/v2/https";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { quoteService } from "../services/quoteService";
-import { Quote } from "../types";
+import { createQuoteSchema, updateQuoteSchema } from "../schema";
 
-export const createQuote = onCall(async (request: CallableRequest<Omit<Quote, 'id' | 'createdAt' | 'isActive'>>) => {
+export const createQuote = onCall(async (request) => {
     if (!request.auth) {
-        throw new Error("Unauthenticated");
+        throw new HttpsError("unauthenticated", "User must be logged in.");
     }
-    return await quoteService.createQuote(request.data, request.auth.uid);
+    try {
+        const data = createQuoteSchema.parse(request.data);
+        return await quoteService.createQuote(data, request.auth.uid);
+    } catch (error: any) {
+        if (error.issues) {
+            throw new HttpsError("invalid-argument", "Validation error", error.issues);
+        }
+        throw error;
+    }
 });
 
-export const updateQuote = onCall(async (request: CallableRequest<{ id: string; data: Partial<Quote> }>) => {
+export const updateQuote = onCall(async (request) => {
     if (!request.auth) {
-        throw new Error("Unauthenticated");
+        throw new HttpsError("unauthenticated", "User must be logged in.");
     }
-    return await quoteService.updateQuote(request.data.id, request.data.data, request.auth.uid);
+    try {
+        const { id, ...data } = request.data;
+        const validatedData = updateQuoteSchema.parse({ id, ...data });
+        const { id: _id, ...updateData } = validatedData;
+        return await quoteService.updateQuote(id, updateData, request.auth.uid);
+    } catch (error: any) {
+        if (error.issues) {
+            throw new HttpsError("invalid-argument", "Validation error", error.issues);
+        }
+        throw error;
+    }
 });
 
-export const deleteQuote = onCall(async (request: CallableRequest<{ id: string }>) => {
+export const deleteQuote = onCall(async (request) => {
     if (!request.auth) {
-        throw new Error("Unauthenticated");
+        throw new HttpsError("unauthenticated", "User must be logged in.");
     }
     return await quoteService.deleteQuote(request.data.id, request.auth.uid);
 });
 
-export const convertQuoteToInvoice = onCall(async (request: CallableRequest<{ quoteId: string }>) => {
+export const convertQuoteToInvoice = onCall(async (request) => {
     if (!request.auth) {
-        throw new Error("Unauthenticated");
+        throw new HttpsError("unauthenticated", "User must be logged in.");
     }
     return await quoteService.convertQuoteToInvoice(request.data.quoteId, request.auth.uid);
 });
