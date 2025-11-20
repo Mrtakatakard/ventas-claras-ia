@@ -23,16 +23,17 @@ service cloud.firestore {
       allow write: if false; // Only allow writes via Cloud Functions
     }
     match /productBatches/{doc} { allow read, write: if isAuthenticated(); }
-    match /invoices/{doc} { allow read, write: if isAuthenticated(); }
-    match /quotes/{doc} { allow read, write: if isAuthenticated(); }
+    
+    // Invoices and Quotes: Read-only for frontend (writes MUST go through Cloud Functions)
     match /invoices/{document=**} {
       allow read: if isAuthenticated();
-      allow write: if false;
+      allow write: if false; // Enforce Cloud Functions only
     }
     match /quotes/{document=**} {
       allow read: if isAuthenticated();
-      allow write: if false;
+      allow write: if false; // Enforce Cloud Functions only
     }
+    
     match /payments/{doc} { allow read, write: if isAuthenticated(); }
     match /users/{doc} { allow read, write: if isAuthenticated(); }
     match /counters/{doc} { allow read, write: if isAuthenticated(); } // For invoice numbers etc.
