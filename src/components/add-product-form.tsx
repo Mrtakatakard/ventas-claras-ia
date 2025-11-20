@@ -103,9 +103,15 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
 
     const productData = {
       ...values,
+      description: values.description || '',
       batches: batchesWithIds,
       image: values.image, // This can be a File, a URL string, or undefined
-      restockTimeDays: values.restockTimeDays === undefined ? null : values.restockTimeDays
+      restockTimeDays: values.restockTimeDays === undefined ? null : values.restockTimeDays,
+      // Computed fields from batches
+      userId: userId,
+      price: batchesWithIds[0]?.price || 0,
+      cost: batchesWithIds[0]?.cost,
+      stock: batchesWithIds.reduce((sum: number, batch: any) => sum + batch.stock, 0),
     };
 
     try {

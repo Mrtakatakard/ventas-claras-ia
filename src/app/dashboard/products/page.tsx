@@ -209,10 +209,10 @@ export default function ProductsPage() {
         'Descripción': p.description,
         'Imagen URL': p.imageUrl,
         'Lote #': `Lote ${index + 1}`,
-        'Costo': batch.cost,
-        'Precio': batch.price,
-        'Stock': batch.stock,
-        'Expiración': batch.expirationDate,
+        'Costo': String(batch.cost),
+        'Precio': String(batch.price),
+        'Stock': String(batch.stock),
+        'Expiración': batch.expirationDate || 'N/A',
       }));
     });
 

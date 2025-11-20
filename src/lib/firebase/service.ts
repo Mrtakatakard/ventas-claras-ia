@@ -63,7 +63,7 @@ export const updateDocument = async <T extends object>(
   const docRef = getDocRef(collectionName, id);
   // Sanitize data to remove undefined fields
   const cleanData = Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== undefined));
-  await updateDoc(docRef, cleanData);
+  await updateDoc(docRef, cleanData as any);
 };
 
 export const deleteDocument = async (collectionName: string, id: string) => {
@@ -212,7 +212,7 @@ export const addProduct = async (productData: Omit<Partial<Product>, 'id' | 'cre
     // Computed fields from first batch
     price: data.batches?.[0]?.price || 0,
     cost: data.batches?.[0]?.cost,
-    stock: data.batches?.reduce((sum, batch) => sum + batch.stock, 0) || 0,
+    stock: data.batches?.reduce((sum: number, batch: any) => sum + batch.stock, 0) || 0,
     description: data.description || '',
     notificationThreshold: data.notificationThreshold ?? 10,
     restockTimeDays: data.restockTimeDays ?? null,

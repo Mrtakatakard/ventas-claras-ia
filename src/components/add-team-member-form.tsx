@@ -39,7 +39,7 @@ export function AddTeamMemberForm({ onSuccess, member }: AddTeamMemberFormProps)
       form.reset({
         name: member.name,
         email: member.email,
-        role: member.role,
+        role: member.role === 'superAdmin' ? 'admin' : member.role,
       });
     } else {
       form.reset({ name: "", email: "", role: "user" });
@@ -64,16 +64,16 @@ export function AddTeamMemberForm({ onSuccess, member }: AddTeamMemberFormProps)
       form.reset();
       onSuccess();
     } catch (error: any) {
-       console.error("Error submitting team member form:", error);
-       let message = error.message || "Ocurrió un error. Por favor, inténtalo de nuevo.";
-       if (message.includes('already-exists')) {
-         message = "Este correo electrónico ya está en uso.";
-         form.setError("email", { type: "manual", message: message });
-       }
+      console.error("Error submitting team member form:", error);
+      let message = error.message || "Ocurrió un error. Por favor, inténtalo de nuevo.";
+      if (message.includes('already-exists')) {
+        message = "Este correo electrónico ya está en uso.";
+        form.setError("email", { type: "manual", message: message });
+      }
       toast({ title: isEditing ? "Error al Actualizar" : "Error al Invitar", description: message, variant: "destructive" });
     }
   }
-  
+
   const handleCancel = () => {
     form.reset();
     onSuccess();
@@ -83,31 +83,30 @@ export function AddTeamMemberForm({ onSuccess, member }: AddTeamMemberFormProps)
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormField control={form.control} name="name" render={({ field }) => (
-            <FormItem><FormLabel>Nombre Completo</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
-          )} />
+          <FormItem><FormLabel>Nombre Completo</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
+        )} />
         <FormField control={form.control} name="email" render={({ field }) => (
-            <FormItem><FormLabel>Correo Electrónico</FormLabel><FormControl><Input placeholder="john.doe@example.com" {...field} disabled={isEditing} /></FormControl><FormMessage /></FormItem>
-          )} />
+          <FormItem><FormLabel>Correo Electrónico</FormLabel><FormControl><Input placeholder="john.doe@example.com" {...field} disabled={isEditing} /></FormControl><FormMessage /></FormItem>
+        )} />
         <FormField control={form.control} name="role" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Rol</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un rol" /></SelectTrigger></FormControl>
-                <SelectContent><SelectItem value="admin">Administrador</SelectItem><SelectItem value="user">Usuario</SelectItem></SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )} />
+          <FormItem>
+            <FormLabel>Rol</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un rol" /></SelectTrigger></FormControl>
+              <SelectContent><SelectItem value="admin">Administrador</SelectItem><SelectItem value="user">Usuario</SelectItem></SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )} />
         <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={handleCancel} disabled={form.formState.isSubmitting}>Cancelar</Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isEditing ? 'Guardar Cambios' : 'Enviar Invitación'}
-            </Button>
+          <Button type="button" variant="outline" onClick={handleCancel} disabled={form.formState.isSubmitting}>Cancelar</Button>
+          <Button type="submit" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isEditing ? 'Guardar Cambios' : 'Enviar Invitación'}
+          </Button>
         </div>
       </form>
     </Form>
   )
 }
 
-    

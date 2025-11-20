@@ -64,7 +64,7 @@ export default function QuotesPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteQuote(id);
+      await quoteApi.delete(id);
       toast({ title: "Cotización eliminada" });
       fetchQuotes();
     } catch (error) {
@@ -75,7 +75,7 @@ export default function QuotesPage() {
   const handleConvertToInvoice = async (quoteId: string) => {
     if (!userId) return;
     try {
-      const newInvoiceId = await quoteApi.convertToInvoice(quoteId, userId);
+      const newInvoiceId = await quoteApi.convertToInvoice(quoteId);
       toast({
         title: "Cotización Convertida",
         description: "La cotización se ha convertido a factura y el stock ha sido actualizado.",

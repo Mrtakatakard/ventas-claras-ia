@@ -43,9 +43,10 @@ export function AddCategoryForm({ onSuccess, category }: AddCategoryFormProps) {
       return;
     }
 
-    const dataToSave: Omit<Category, 'id' | 'createdAt' | 'userId' | 'isActive'> = {
-        name: values.name,
-        description: values.description || '',
+    const dataToSave: Omit<Category, 'id' | 'createdAt' | 'isActive'> = {
+      name: values.name,
+      description: values.description || '',
+      userId: userId,
     }
 
     try {
@@ -64,8 +65,8 @@ export function AddCategoryForm({ onSuccess, category }: AddCategoryFormProps) {
       }
       onSuccess();
       form.reset();
-    } catch(e) {
-       toast({ title: "Error", description: "No se pudo guardar la categoría.", variant: "destructive" });
+    } catch (e) {
+      toast({ title: "Error", description: "No se pudo guardar la categoría.", variant: "destructive" });
     }
   }
 
@@ -78,12 +79,12 @@ export function AddCategoryForm({ onSuccess, category }: AddCategoryFormProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField control={form.control} name="name" render={({ field }) => (
-            <FormItem><FormLabel>Nombre de la Categoría</FormLabel><FormControl><Input placeholder="Ej: Nutrición" {...field} /></FormControl><FormMessage /></FormItem>
-          )}/>
+          <FormItem><FormLabel>Nombre de la Categoría</FormLabel><FormControl><Input placeholder="Ej: Nutrición" {...field} /></FormControl><FormMessage /></FormItem>
+        )} />
         <FormField control={form.control} name="description" render={({ field }) => (
-            <FormItem><FormLabel>Descripción (Opcional)</FormLabel><FormControl><Textarea placeholder="Describe esta categoría..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-          )} />
-        
+          <FormItem><FormLabel>Descripción (Opcional)</FormLabel><FormControl><Textarea placeholder="Describe esta categoría..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+        )} />
+
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={handleCancel}>Cancelar</Button>
           <Button type="submit">{isEditing ? 'Guardar Cambios' : 'Agregar Categoría'}</Button>
