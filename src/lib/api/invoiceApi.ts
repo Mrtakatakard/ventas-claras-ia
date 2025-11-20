@@ -23,5 +23,10 @@ export const invoiceApi = {
         const getReceivables = httpsCallable(functions, 'invoiceController-getReceivables');
         const result = await getReceivables();
         return result.data as Invoice[];
+    },
+
+    addPayment: async (invoiceId: string, paymentData: any): Promise<void> => {
+        const addPayment = httpsCallable(functions, 'invoiceController-addPayment');
+        await addPayment({ invoiceId, paymentData });
     }
 };

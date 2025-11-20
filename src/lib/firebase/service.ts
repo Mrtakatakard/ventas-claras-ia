@@ -283,66 +283,7 @@ export const getAllInvoicesForAdmin = async () => {
   return invoices;
 };
 
-export const addPaymentToInvoice = async (invoiceId: string, paymentData: Omit<Payment, 'id' | 'receiptNumber' | 'currency' | 'status'> & { image?: File }, userId: string): Promise<Payment> => {
-  const { image, ...data } = paymentData;
-  let imageUrl = '';
-  const paymentId = new Date().toISOString() + Math.random();
 
-  if (image instanceof File) {
-    imageUrl = await uploadFile(image, `users/${userId}/invoices/${invoiceId}/payments/${paymentId}/${image.name}`);
-  }
-
-  return await runTransaction(db, async (transaction) => {
-    const invoiceRef = doc(db, "invoices", invoiceId);
-    const invoiceDoc = await transaction.get(invoiceRef);
-    if (!invoiceDoc.exists() || invoiceDoc.data().userId !== userId) {
-      throw new Error("Factura no encontrada o no tienes permiso para modificarla.");
-    }
-
-    const invoice = invoiceDoc.data() as Invoice;
-
-    const currentBalance = Math.round((invoice.balanceDue ?? invoice.total) * 100) / 100;
-
-    if (data.amount <= 0) {
-      throw new Error("El monto del pago debe ser mayor que cero.");
-    }
-    if (data.amount > currentBalance + 0.001) {
-      throw new Error(`El monto del pago (${data.amount.toFixed(2)}) no puede ser mayor que el balance pendiente de ${currentBalance.toFixed(2)}.`);
-    }
-
-    const newPayment: Payment = {
-      id: paymentId,
-      receiptNumber: `REC-${Date.now().toString().slice(-8)}`,
-      amount: data.amount,
-      paymentDate: data.paymentDate,
-      method: data.method,
-      note: data.note || '',
-      imageUrl: imageUrl || '',
-      currency: invoice.currency,
-      status: 'pagado', // payment status
-    };
-
-    const newBalanceDue = Math.round((currentBalance - data.amount) * 100) / 100;
-
-    let newStatus: Invoice['status'] = invoice.status;
-    let finalBalance = newBalanceDue;
-
-    if (newBalanceDue <= 0.001) {
-      newStatus = 'pagada';
-      finalBalance = 0;
-    } else if (newBalanceDue < invoice.total) {
-      newStatus = 'parcialmente pagada';
-    }
-
-    transaction.update(invoiceRef, {
-      payments: arrayUnion(newPayment),
-      balanceDue: finalBalance,
-      status: newStatus
-    });
-
-    return newPayment;
-  });
-};
 
 // Team Members (now managed as User Profiles)
 export const inviteTeamMember = async (data: { name: string; email: string; role: 'admin' | 'user' }) => {
