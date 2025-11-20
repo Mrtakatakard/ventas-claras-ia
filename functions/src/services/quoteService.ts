@@ -3,11 +3,14 @@ import * as invoiceService from "./invoiceService";
 import { Quote } from "../types";
 import { db } from "../index";
 import * as functions from "firebase-functions";
+import { counterService } from "./counterService";
 
 export const quoteService = {
     async createQuote(quoteData: Omit<Quote, 'id' | 'createdAt' | 'isActive' | 'quoteNumber' | 'status' | 'userId'>, userId: string): Promise<string> {
         const quoteId = db.collection("quotes").doc().id;
-        const quoteNumber = `QT-${Date.now().toString().slice(-6)}`;
+
+        // Generate sequential quote number
+        const quoteNumber = await counterService.getNextNumber('quotes', userId, 'QT');
 
         const newQuote: Quote = {
             ...quoteData,

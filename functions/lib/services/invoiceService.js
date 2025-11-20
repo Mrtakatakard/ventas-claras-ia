@@ -38,10 +38,11 @@ const invoiceRepository_1 = require("../repositories/invoiceRepository");
 const index_1 = require("../index");
 const functions = __importStar(require("firebase-functions"));
 const firestore_1 = require("firebase-admin/firestore");
+const counterService_1 = require("./counterService");
 const createInvoice = async (invoiceData, userId) => {
     const invoiceId = index_1.db.collection("invoices").doc().id;
-    // Generate a simple invoice number for now. In a real app, this might need a transactional counter.
-    const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
+    // Generate sequential invoice number
+    const invoiceNumber = await counterService_1.counterService.getNextNumber('invoices', userId, 'INV');
     const newInvoice = Object.assign(Object.assign({}, invoiceData), { id: invoiceId, userId, createdAt: new Date(), isActive: true, status: 'pendiente', balanceDue: invoiceData.total, payments: [], invoiceNumber: invoiceNumber });
     await index_1.db.runTransaction(async (transaction) => {
         var _a;

@@ -38,10 +38,12 @@ const quoteRepository_1 = require("../repositories/quoteRepository");
 const invoiceService = __importStar(require("./invoiceService"));
 const index_1 = require("../index");
 const functions = __importStar(require("firebase-functions"));
+const counterService_1 = require("./counterService");
 exports.quoteService = {
     async createQuote(quoteData, userId) {
         const quoteId = index_1.db.collection("quotes").doc().id;
-        const quoteNumber = `QT-${Date.now().toString().slice(-6)}`;
+        // Generate sequential quote number
+        const quoteNumber = await counterService_1.counterService.getNextNumber('quotes', userId, 'QT');
         const newQuote = Object.assign(Object.assign({}, quoteData), { id: quoteId, userId, createdAt: new Date(), isActive: true, quoteNumber: quoteNumber, status: 'borrador' });
         await quoteRepository_1.quoteRepository.create(newQuote);
         return quoteId;

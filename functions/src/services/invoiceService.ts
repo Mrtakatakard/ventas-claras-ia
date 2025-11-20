@@ -3,11 +3,13 @@ import { Invoice, Payment } from "../types";
 import { db } from "../index";
 import * as functions from "firebase-functions";
 import { FieldValue } from "firebase-admin/firestore";
+import { counterService } from "./counterService";
 
 export const createInvoice = async (invoiceData: Omit<Invoice, 'id' | 'createdAt' | 'isActive' | 'status' | 'balanceDue' | 'payments' | 'invoiceNumber' | 'userId'>, userId: string): Promise<string> => {
     const invoiceId = db.collection("invoices").doc().id;
-    // Generate a simple invoice number for now. In a real app, this might need a transactional counter.
-    const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
+
+    // Generate sequential invoice number
+    const invoiceNumber = await counterService.getNextNumber('invoices', userId, 'INV');
 
     const newInvoice: Invoice = {
         ...invoiceData,

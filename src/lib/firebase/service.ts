@@ -209,6 +209,10 @@ export const addProduct = async (productData: Omit<Partial<Product>, 'id' | 'cre
     category: data.category,
     currency: data.currency,
     batches: data.batches,
+    // Computed fields from first batch
+    price: data.batches?.[0]?.price || 0,
+    cost: data.batches?.[0]?.cost,
+    stock: data.batches?.reduce((sum, batch) => sum + batch.stock, 0) || 0,
     description: data.description || '',
     notificationThreshold: data.notificationThreshold ?? 10,
     restockTimeDays: data.restockTimeDays ?? null,
@@ -327,6 +331,10 @@ export const getTeamMembers = async (userId: string): Promise<UserProfile[]> => 
   }
 
   return members;
+};
+
+export const getAllTeamMembersForAdmin = async (): Promise<UserProfile[]> => {
+  return await getDocumentsForAdmin<UserProfile>("users");
 };
 
 

@@ -1,5 +1,9 @@
 // Import the functions you need from the SDKs you need
 import { getApp, getApps, initializeApp } from "firebase/app";
+import { validateEnv } from "../env";
+
+// Validate environment variables before initializing Firebase
+const env = validateEnv();
 
 if (typeof window === 'undefined') {
   // Fix for "TypeError: localStorage.getItem is not a function"
