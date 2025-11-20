@@ -20,7 +20,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ImportProductsDialog } from "@/components/import-products-dialog";
 import type { Product, Category, ProductBatch } from "@/lib/types";
 import { useAuth } from "@/lib/firebase/hooks"
-import { getProducts, deleteProduct, getCategories } from "@/lib/firebase/service"
+import { getProducts, getCategories } from "@/lib/firebase/service"
+import { productApi } from "@/lib/api/productApi"
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { ManageCategoriesDialog } from "@/components/manage-categories-dialog";
@@ -66,10 +67,10 @@ export default function ProductsPage() {
       setCategories(fetchedCategories);
     } catch (error: any) {
       console.error("Error fetching products:", error);
-      toast({ 
-        title: "Error al cargar productos", 
-        description: error.message || "No se pudieron cargar los datos. Inténtalo de nuevo.", 
-        variant: "destructive" 
+      toast({
+        title: "Error al cargar productos",
+        description: error.message || "No se pudieron cargar los datos. Inténtalo de nuevo.",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -84,15 +85,15 @@ export default function ProductsPage() {
 
   useEffect(() => {
     if (searchParams.get('action') === 'create') {
-        handleAddNewClick();
+      handleAddNewClick();
     }
   }, [searchParams]);
-  
+
   const handleEditClick = (product: Product) => {
     setEditingProduct(product);
     setOpen(true);
   };
-  
+
   const handleAddNewClick = () => {
     setEditingProduct(null);
     setOpen(true);
@@ -119,7 +120,7 @@ export default function ProductsPage() {
         try {
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
-          
+
           let allRows: any[] = [];
           workbook.SheetNames.forEach(sheetName => {
             const worksheet = workbook.Sheets[sheetName];
@@ -140,8 +141,8 @@ export default function ProductsPage() {
       };
       reader.readAsArrayBuffer(file);
     }
-     if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -151,11 +152,11 @@ export default function ProductsPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteProduct(id);
+      await productApi.delete(id);
       toast({ title: "Producto eliminado" });
       fetchData();
-    } catch(e) {
-       toast({ title: "Error", description: "No se pudo eliminar el producto.", variant: "destructive" });
+    } catch (e) {
+      toast({ title: "Error", description: "No se pudo eliminar el producto.", variant: "destructive" });
     }
   }
 
@@ -164,7 +165,7 @@ export default function ProductsPage() {
     if (stock < 20) return "secondary";
     return "default";
   };
-  
+
   const formatCurrency = (price: number, currency: 'DOP' | 'USD' = 'DOP') => {
     return new Intl.NumberFormat("es-DO", { style: "currency", currency: currency }).format(price);
   }
@@ -176,43 +177,43 @@ export default function ProductsPage() {
     }
     setSortConfig({ key, direction });
   };
-  
+
   const handleExport = () => {
-      const dataToExport = products.flatMap(p => {
-        if (!p.batches || p.batches.length === 0) {
-            return [{
-                'Código': p.code,
-                'Nombre': p.name,
-                'Categoría': p.category,
-                'Moneda': p.currency,
-                'Exento de ITBIS': p.isTaxExempt ? 'Sí' : 'No',
-                'Umbral de Notificación': p.notificationThreshold,
-                'Tiempo de Reposición (días)': p.restockTimeDays,
-                'Descripción': p.description,
-                'Imagen URL': p.imageUrl,
-                'Lote #': 'N/A',
-                'Costo': 'N/A',
-                'Precio': 'N/A',
-                'Stock': 'N/A',
-                'Expiración': 'N/A',
-            }];
-        }
-        return p.batches.map((batch, index) => ({
-            'Código': p.code,
-            'Nombre': p.name,
-            'Categoría': p.category,
-            'Moneda': p.currency,
-            'Exento de ITBIS': p.isTaxExempt ? 'Sí' : 'No',
-            'Umbral de Notificación': p.notificationThreshold,
-            'Tiempo de Reposición (días)': p.restockTimeDays,
-            'Descripción': p.description,
-            'Imagen URL': p.imageUrl,
-            'Lote #': `Lote ${index + 1}`,
-            'Costo': batch.cost,
-            'Precio': batch.price,
-            'Stock': batch.stock,
-            'Expiración': batch.expirationDate,
-        }));
+    const dataToExport = products.flatMap(p => {
+      if (!p.batches || p.batches.length === 0) {
+        return [{
+          'Código': p.code,
+          'Nombre': p.name,
+          'Categoría': p.category,
+          'Moneda': p.currency,
+          'Exento de ITBIS': p.isTaxExempt ? 'Sí' : 'No',
+          'Umbral de Notificación': p.notificationThreshold,
+          'Tiempo de Reposición (días)': p.restockTimeDays,
+          'Descripción': p.description,
+          'Imagen URL': p.imageUrl,
+          'Lote #': 'N/A',
+          'Costo': 'N/A',
+          'Precio': 'N/A',
+          'Stock': 'N/A',
+          'Expiración': 'N/A',
+        }];
+      }
+      return p.batches.map((batch, index) => ({
+        'Código': p.code,
+        'Nombre': p.name,
+        'Categoría': p.category,
+        'Moneda': p.currency,
+        'Exento de ITBIS': p.isTaxExempt ? 'Sí' : 'No',
+        'Umbral de Notificación': p.notificationThreshold,
+        'Tiempo de Reposición (días)': p.restockTimeDays,
+        'Descripción': p.description,
+        'Imagen URL': p.imageUrl,
+        'Lote #': `Lote ${index + 1}`,
+        'Costo': batch.cost,
+        'Precio': batch.price,
+        'Stock': batch.stock,
+        'Expiración': batch.expirationDate,
+      }));
     });
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -224,13 +225,13 @@ export default function ProductsPage() {
   const sortedProducts: ProductWithCalculations[] = useMemo(() => {
     const productsWithCalculations = products.map(p => {
       const totalStock = (p.batches || []).reduce((sum, batch) => sum + batch.stock, 0);
-      
+
       const nextExpiration = (p.batches || [])
         .filter(batch => batch.expirationDate)
         .map(batch => new Date(batch.expirationDate!))
         .filter(date => date >= new Date())
         .sort((a, b) => a.getTime() - b.getTime())[0]?.toISOString().split('T')[0];
-        
+
       return {
         ...p,
         totalStock,
@@ -245,22 +246,22 @@ export default function ProductsPage() {
     );
 
     sortableItems.sort((a, b) => {
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
-        
-        let comparison = 0;
-        if (typeof aValue === 'number' && typeof bValue === 'number') {
-            comparison = (aValue || 0) - (bValue || 0);
-        } else {
-            comparison = String(aValue || '').localeCompare(String(bValue || ''));
-        }
-        
-        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+
+      let comparison = 0;
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        comparison = (aValue || 0) - (bValue || 0);
+      } else {
+        comparison = String(aValue || '').localeCompare(String(bValue || ''));
+      }
+
+      return sortConfig.direction === 'asc' ? comparison : -comparison;
     });
 
     return sortableItems;
   }, [products, filter, sortConfig]);
-  
+
   const { paginatedProducts, totalPages } = useMemo(() => {
     const startIndex = (currentPage - 1) * rowsPerPage;
     const endIndex = startIndex + rowsPerPage;
@@ -284,7 +285,7 @@ export default function ProductsPage() {
           <Upload className="mr-2 h-5 w-5" />
           Importar
         </Button>
-         <Button variant="outline" onClick={() => setIsManageCategoriesOpen(true)}>
+        <Button variant="outline" onClick={() => setIsManageCategoriesOpen(true)}>
           <Tags className="mr-2 h-5 w-5" />
           Gestionar Categorías
         </Button>
@@ -300,7 +301,7 @@ export default function ProductsPage() {
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-             <DialogHeader>
+            <DialogHeader>
               <DialogTitle>{editingProduct ? 'Editar Producto' : 'Agregar Nuevo Producto'}</DialogTitle>
               <DialogDescription>{editingProduct ? 'Modifica los datos del producto.' : 'Completa los datos para registrar un nuevo producto.'}</DialogDescription>
             </DialogHeader>
@@ -313,15 +314,15 @@ export default function ProductsPage() {
           </DialogContent>
         </Dialog>
       </PageHeader>
-      
+
       <ManageCategoriesDialog
         isOpen={isManageCategoriesOpen}
         onClose={() => setIsManageCategoriesOpen(false)}
         onCategoriesUpdate={fetchData}
       />
-      
+
       {importedData && (
-        <ImportProductsDialog 
+        <ImportProductsDialog
           isOpen={!!importedData}
           onClose={() => setImportedData(null)}
           importedData={importedData}
@@ -334,24 +335,24 @@ export default function ProductsPage() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-between gap-4 mb-4">
-              <div className="relative w-full max-w-sm">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                      type="search"
-                      placeholder="Buscar por código, nombre o categoría..."
-                      className="w-full pl-8"
-                      value={filter}
-                      onChange={(e) => {
-                        setFilter(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                  />
-              </div>
+            <div className="relative w-full max-w-sm">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Buscar por código, nombre o categoría..."
+                className="w-full pl-8"
+                value={filter}
+                onChange={(e) => {
+                  setFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
           </div>
           <Table>
             <TableHeader>
               <TableRow>
-                 <TableHead className="hidden sm:table-cell w-[64px]">
+                <TableHead className="hidden sm:table-cell w-[64px]">
                   <span className="sr-only">Imagen</span>
                 </TableHead>
                 <TableHead className="hidden md:table-cell w-[100px]">
@@ -373,81 +374,81 @@ export default function ProductsPage() {
                   </Button>
                 </TableHead>
                 <TableHead className="hidden lg:table-cell">
-                   <Button variant="ghost" onClick={() => handleSort('category')} className="-ml-4">
+                  <Button variant="ghost" onClick={() => handleSort('category')} className="-ml-4">
                     Categoría
                     {sortConfig.key === 'category' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
                   </Button>
                 </TableHead>
                 <TableHead className="hidden sm:table-cell">
-                   Precio Venta
+                  Precio Venta
                 </TableHead>
-                 <TableHead className="hidden lg:table-cell">
-                   Próx. Expiración
+                <TableHead className="hidden lg:table-cell">
+                  Próx. Expiración
                 </TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                Array.from({length: 5}).map((_, i) => (
+                Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-10 w-10 rounded-md"/></TableCell>
-                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20"/></TableCell>
-                    <TableCell><Skeleton className="h-5 w-40"/></TableCell>
-                    <TableCell><Skeleton className="h-6 w-24 rounded-full"/></TableCell>
-                    <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-24"/></TableCell>
-                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-20"/></TableCell>
-                    <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-24"/></TableCell>
-                    <TableCell><Skeleton className="h-8 w-8 rounded-full"/></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-10 w-10 rounded-md" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-24 rounded-full" /></TableCell>
+                    <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                    <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-8 rounded-full" /></TableCell>
                   </TableRow>
                 ))
               ) : paginatedProducts.length > 0 ? (
                 paginatedProducts.map((product) => {
                   const firstBatch = product.batches?.[0];
                   return (
-                  <TableRow key={product.id}>
-                     <TableCell className="hidden sm:table-cell">
+                    <TableRow key={product.id}>
+                      <TableCell className="hidden sm:table-cell">
                         <Avatar className="h-10 w-10 rounded-md">
-                            <AvatarImage src={product.imageUrl} alt={product.name} data-ai-hint="product image" />
-                            <AvatarFallback className="rounded-md">{product.name.charAt(0)}</AvatarFallback>
+                          <AvatarImage src={product.imageUrl} alt={product.name} data-ai-hint="product image" />
+                          <AvatarFallback className="rounded-md">{product.name.charAt(0)}</AvatarFallback>
                         </Avatar>
-                    </TableCell>
-                    <TableCell className="font-mono hidden md:table-cell">{product.code}</TableCell>
-                    <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStockBadgeVariant(product.totalStock)} className="text-sm">
-                        {product.totalStock > 0 ? product.totalStock : "Agotado"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">{product.category}</TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      {firstBatch ? formatCurrency(firstBatch.price, product.currency) : "N/A"}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">{product.nextExpiration || 'N/A'}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Abrir menú de acciones</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleEditClick(product)}><Edit className="mr-2 h-4 w-4"/>Editar</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(product.id)}>
-                             <Trash2 className="mr-2 h-4 w-4"/>Eliminar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+                      </TableCell>
+                      <TableCell className="font-mono hidden md:table-cell">{product.code}</TableCell>
+                      <TableCell className="font-medium">{product.name}</TableCell>
+                      <TableCell>
+                        <Badge variant={getStockBadgeVariant(product.totalStock)} className="text-sm">
+                          {product.totalStock > 0 ? product.totalStock : "Agotado"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">{product.category}</TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {firstBatch ? formatCurrency(firstBatch.price, product.currency) : "N/A"}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">{product.nextExpiration || 'N/A'}</TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Abrir menú de acciones</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleEditClick(product)}><Edit className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(product.id)}>
+                              <Trash2 className="mr-2 h-4 w-4" />Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
                   )
                 })
               ) : (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center h-24">
-                     {filter ? 'No se encontraron productos.' : 'No hay productos. ¡Agrega tu primer producto!'}
+                    {filter ? 'No se encontraron productos.' : 'No hay productos. ¡Agrega tu primer producto!'}
                   </TableCell>
                 </TableRow>
               )}
@@ -528,4 +529,3 @@ export default function ProductsPage() {
   );
 }
 
-    

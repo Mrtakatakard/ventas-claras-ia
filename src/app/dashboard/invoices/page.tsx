@@ -12,7 +12,8 @@ import { PageHeader } from "@/components/page-header"
 import { MoreHorizontal, PlusCircle, Trash2, Eye, Search, ChevronsUpDown, ArrowUp, ArrowDown, Edit, ArrowLeft, ArrowRight, ChevronsLeft, ChevronsRight, CreditCard } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/firebase/hooks";
-import { getInvoices, deleteInvoice } from "@/lib/firebase/service";
+import { getInvoices } from "@/lib/firebase/service";
+import { invoiceApi } from "@/lib/api/invoiceApi";
 import type { Invoice } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -48,7 +49,7 @@ export default function InvoicesPage() {
       const data = await getInvoices(userId);
       setInvoices(data);
     } catch (error) {
-       toast({ title: "Error", description: "No se pudieron cargar las facturas.", variant: "destructive" });
+      toast({ title: "Error", description: "No se pudieron cargar las facturas.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -64,7 +65,7 @@ export default function InvoicesPage() {
     setSelectedInvoice(invoice);
     setIsPaymentDialogOpen(true);
   };
-  
+
   const handlePaymentSuccess = () => {
     setIsPaymentDialogOpen(false);
     setSelectedInvoice(null);
@@ -76,16 +77,19 @@ export default function InvoicesPage() {
       setSelectedInvoice(null);
     }
   }, [isPaymentDialogOpen]);
-  
+
   const formatCurrency = (num: number, currency: 'DOP' | 'USD' = 'DOP') => {
     return new Intl.NumberFormat('es-DO', { style: 'currency', currency: currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
   };
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteInvoice(id);
-      toast({ title: "Factura eliminada" });
-      fetchInvoices();
+      await invoiceApi.delete(id);
+      setInvoices(invoices.filter((invoice) => invoice.id !== id));
+      toast({
+        title: "Factura eliminada",
+        description: "La factura ha sido eliminada correctamente.",
+      });
     } catch (error: any) {
       toast({ title: "Error al eliminar", description: error.message, variant: "destructive" });
     }
@@ -100,7 +104,7 @@ export default function InvoicesPage() {
       default: return "outline";
     }
   }
-  
+
   const handleSort = (key: SortKey) => {
     let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -122,21 +126,21 @@ export default function InvoicesPage() {
     );
 
     sortableItems.sort((a, b) => {
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
-        
-        let comparison = 0;
-        if (sortConfig.key === 'issueDate' || sortConfig.key === 'dueDate' || sortConfig.key === 'createdAt') {
-            const dateA = aValue ? new Date(aValue as any).getTime() : 0;
-            const dateB = bValue ? new Date(bValue as any).getTime() : 0;
-            comparison = dateA - dateB;
-        } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-            comparison = aValue - bValue;
-        } else {
-            comparison = String(aValue).localeCompare(String(bValue));
-        }
-        
-        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+
+      let comparison = 0;
+      if (sortConfig.key === 'issueDate' || sortConfig.key === 'dueDate' || sortConfig.key === 'createdAt') {
+        const dateA = aValue ? new Date(aValue as any).getTime() : 0;
+        const dateB = bValue ? new Date(bValue as any).getTime() : 0;
+        comparison = dateA - dateB;
+      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+        comparison = aValue - bValue;
+      } else {
+        comparison = String(aValue).localeCompare(String(bValue));
+      }
+
+      return sortConfig.direction === 'asc' ? comparison : -comparison;
     });
 
     return sortableItems;
@@ -177,8 +181,8 @@ export default function InvoicesPage() {
                 className="w-full pl-8"
                 value={filter}
                 onChange={(e) => {
-                    setFilter(e.target.value)
-                    setCurrentPage(1)
+                  setFilter(e.target.value)
+                  setCurrentPage(1)
                 }}
               />
             </div>
@@ -187,40 +191,40 @@ export default function InvoicesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>
-                   <Button variant="ghost" onClick={() => handleSort('invoiceNumber')} className="-ml-4">
-                      Factura #
-                      {sortConfig.key === 'invoiceNumber' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
+                  <Button variant="ghost" onClick={() => handleSort('invoiceNumber')} className="-ml-4">
+                    Factura #
+                    {sortConfig.key === 'invoiceNumber' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                  </Button>
                 </TableHead>
                 <TableHead>
-                   <Button variant="ghost" onClick={() => handleSort('clientName')} className="-ml-4">
-                      Cliente
-                      {sortConfig.key === 'clientName' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
+                  <Button variant="ghost" onClick={() => handleSort('clientName')} className="-ml-4">
+                    Cliente
+                    {sortConfig.key === 'clientName' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                  </Button>
                 </TableHead>
-                 <TableHead className="hidden md:table-cell">
-                   <Button variant="ghost" onClick={() => handleSort('issueDate')} className="-ml-4">
-                      Fecha Emisión
-                      {sortConfig.key === 'issueDate' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
+                <TableHead className="hidden md:table-cell">
+                  <Button variant="ghost" onClick={() => handleSort('issueDate')} className="-ml-4">
+                    Fecha Emisión
+                    {sortConfig.key === 'issueDate' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                  </Button>
                 </TableHead>
-                 <TableHead className="hidden sm:table-cell text-right">
-                   <Button variant="ghost" onClick={() => handleSort('total')} className="ml-auto -mr-4 flex">
-                      Total
-                      {sortConfig.key === 'total' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
+                <TableHead className="hidden sm:table-cell text-right">
+                  <Button variant="ghost" onClick={() => handleSort('total')} className="ml-auto -mr-4 flex">
+                    Total
+                    {sortConfig.key === 'total' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                  </Button>
                 </TableHead>
-                 <TableHead className="text-right">
-                   <Button variant="ghost" onClick={() => handleSort('balanceDue')} className="ml-auto -mr-4 flex">
-                      Balance Pend.
-                      {sortConfig.key === 'balanceDue' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
+                <TableHead className="text-right">
+                  <Button variant="ghost" onClick={() => handleSort('balanceDue')} className="ml-auto -mr-4 flex">
+                    Balance Pend.
+                    {sortConfig.key === 'balanceDue' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                  </Button>
                 </TableHead>
                 <TableHead className="hidden sm:table-cell">
                   <Button variant="ghost" onClick={() => handleSort('status')} className="-ml-4">
-                      Estado
-                      {sortConfig.key === 'status' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
+                    Estado
+                    {sortConfig.key === 'status' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                  </Button>
                 </TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -229,13 +233,13 @@ export default function InvoicesPage() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell><Skeleton className="h-5 w-20"/></TableCell>
-                    <TableCell><Skeleton className="h-5 w-32"/></TableCell>
-                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24"/></TableCell>
-                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24"/></TableCell>
-                    <TableCell><Skeleton className="h-5 w-24"/></TableCell>
-                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-6 w-20 rounded-full"/></TableCell>
-                    <TableCell><Skeleton className="h-8 w-8 ml-auto rounded-full"/></TableCell>
+                    <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-8 ml-auto rounded-full" /></TableCell>
                   </TableRow>
                 ))
               ) : paginatedInvoices.length > 0 ? (
@@ -260,15 +264,15 @@ export default function InvoicesPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                           <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/invoices/${invoice.id}`}><Eye className="mr-2 h-4 w-4"/>Ver Detalles</Link>
+                            <Link href={`/dashboard/invoices/${invoice.id}`}><Eye className="mr-2 h-4 w-4" />Ver Detalles</Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild disabled={invoice.status === 'pagada'}>
                             <Link href={`/dashboard/invoices/${invoice.id}/edit`} className={invoice.status === 'pagada' ? 'pointer-events-none' : ''}>
-                              <Edit className="mr-2 h-4 w-4"/>Editar
+                              <Edit className="mr-2 h-4 w-4" />Editar
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleOpenPaymentDialog(invoice)} disabled={invoice.balanceDue <= 0}>
-                             <CreditCard className="mr-2 h-4 w-4"/>Realizar Pago
+                            <CreditCard className="mr-2 h-4 w-4" />Realizar Pago
                           </DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(invoice.id)}>
                             <Trash2 className="mr-2 h-4 w-4" />
@@ -282,7 +286,7 @@ export default function InvoicesPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center h-24">
-                     {filter ? 'No se encontraron facturas.' : 'No hay facturas. ¡Crea la primera!'}
+                    {filter ? 'No se encontraron facturas.' : 'No hay facturas. ¡Crea la primera!'}
                   </TableCell>
                 </TableRow>
               )}
@@ -360,24 +364,24 @@ export default function InvoicesPage() {
         </CardContent>
       </Card>
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                  <DialogTitle>Registrar Nuevo Pago</DialogTitle>
-                  <DialogDescription>
-                      {selectedInvoice 
-                          ? `Ingresa los detalles del pago para la factura ${selectedInvoice.invoiceNumber}.` 
-                          : ""
-                      }
-                  </DialogDescription>
-              </DialogHeader>
-              {selectedInvoice && (
-                  <AddPaymentForm 
-                      invoice={selectedInvoice}
-                      onSuccess={handlePaymentSuccess}
-                      onCancel={() => setIsPaymentDialogOpen(false)}
-                  />
-              )}
-          </DialogContent>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Registrar Nuevo Pago</DialogTitle>
+            <DialogDescription>
+              {selectedInvoice
+                ? `Ingresa los detalles del pago para la factura ${selectedInvoice.invoiceNumber}.`
+                : ""
+              }
+            </DialogDescription>
+          </DialogHeader>
+          {selectedInvoice && (
+            <AddPaymentForm
+              invoice={selectedInvoice}
+              onSuccess={handlePaymentSuccess}
+              onCancel={() => setIsPaymentDialogOpen(false)}
+            />
+          )}
+        </DialogContent>
       </Dialog>
     </>
   )

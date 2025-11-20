@@ -1,0 +1,27 @@
+import { functions } from "../firebase/config";
+import { httpsCallable } from "firebase/functions";
+import { Quote } from "../../../functions/src/types";
+
+export const quoteApi = {
+    create: async (quote: Omit<Quote, 'id' | 'createdAt' | 'isActive'>): Promise<string> => {
+        const createQuote = httpsCallable(functions, 'quoteController-createQuote');
+        const result = await createQuote(quote);
+        return result.data as string;
+    },
+
+    update: async (id: string, data: Partial<Quote>): Promise<void> => {
+        const updateQuote = httpsCallable(functions, 'quoteController-updateQuote');
+        await updateQuote({ id, data });
+    },
+
+    delete: async (id: string): Promise<void> => {
+        const deleteQuote = httpsCallable(functions, 'quoteController-deleteQuote');
+        await deleteQuote({ id });
+    },
+
+    convertToInvoice: async (quoteId: string): Promise<string> => {
+        const convertQuoteToInvoice = httpsCallable(functions, 'quoteController-convertQuoteToInvoice');
+        const result = await convertQuoteToInvoice({ quoteId });
+        return result.data as string;
+    }
+};

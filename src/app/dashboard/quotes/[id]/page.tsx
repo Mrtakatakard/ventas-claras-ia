@@ -10,7 +10,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Download, Printer, Loader2, FileText } from "lucide-react";
-import { getQuote, convertQuoteToInvoice } from '@/lib/firebase/service';
+import { getQuote } from '@/lib/firebase/service';
+import { quoteApi } from '@/lib/api/quoteApi';
 import type { Quote, InvoiceItem } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -27,7 +28,7 @@ export default function QuoteDetailPage() {
   const { toast } = useToast();
   const { userId } = useAuth();
   const id = params.id as string;
-  
+
   const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -46,7 +47,7 @@ export default function QuoteDetailPage() {
     };
     fetchQuote();
   }, [id]);
-  
+
   const formatCurrency = (num: number, currency?: 'DOP' | 'USD') => {
     return new Intl.NumberFormat('es-DO', { style: 'currency', currency: currency || 'DOP', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
   };
@@ -55,7 +56,7 @@ export default function QuoteDetailPage() {
     if (!quote || !userId) return;
     setIsConverting(true);
     try {
-      const newInvoiceId = await convertQuoteToInvoice(quote.id, userId);
+      const newInvoiceId = await quoteApi.convertToInvoice(quote.id);
       logAnalyticsEvent('invoice_created', { from_quote: true });
       toast({
         title: "Cotización Convertida",
@@ -66,7 +67,7 @@ export default function QuoteDetailPage() {
     } catch (error: any) {
       toast({ title: "Error al convertir", description: error.message, variant: "destructive" });
     } finally {
-        setIsConverting(false);
+      setIsConverting(false);
     }
   }
 
@@ -78,7 +79,7 @@ export default function QuoteDetailPage() {
     const { default: autoTable } = await import('jspdf-autotable');
 
     const doc = new jsPDF();
-    
+
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.text("Ventas Claras", 14, 22);
@@ -90,7 +91,7 @@ export default function QuoteDetailPage() {
     doc.text(`Cotización: ${quote.quoteNumber}`, 200, 22, { align: 'right' });
     doc.setFontSize(12);
     doc.text(`Estado: ${quote.status}`, 200, 28, { align: 'right' });
-    
+
     doc.setLineWidth(0.5);
     doc.line(14, 38, 200, 38);
 
@@ -102,9 +103,9 @@ export default function QuoteDetailPage() {
     currentY += 5;
     doc.setFont("helvetica", "normal");
     doc.text(quote.clientEmail, 14, currentY);
-    if(quote.clientAddress) {
-        currentY += 5;
-        doc.text(quote.clientAddress, 14, currentY);
+    if (quote.clientAddress) {
+      currentY += 5;
+      doc.text(quote.clientAddress, 14, currentY);
     }
 
     const rightColX = 200;
@@ -129,9 +130,9 @@ export default function QuoteDetailPage() {
         formatCurrency((item.finalPrice ?? item.unitPrice) * item.quantity, quote.currency)
       ]),
       theme: 'striped',
-      headStyles: { 
-          fillColor: [38, 127, 172], // A blue color
-          halign: 'center'
+      headStyles: {
+        fillColor: [38, 127, 172], // A blue color
+        halign: 'center'
       },
       styles: { halign: 'left' },
       columnStyles: {
@@ -152,9 +153,9 @@ export default function QuoteDetailPage() {
             default:
               data.cell.styles.halign = 'left';
           }
-           if (data.column.index === 0) {
-             data.cell.styles.halign = 'center';
-           }
+          if (data.column.index === 0) {
+            data.cell.styles.halign = 'center';
+          }
         }
       }
     });
@@ -164,13 +165,13 @@ export default function QuoteDetailPage() {
     const valueX = 200;
 
     const calculateTaxableSubtotal = (items: InvoiceItem[]): number => {
-        return items.reduce((acc, item) => {
-            if (!item.isTaxExempt) {
-                const itemTotal = (item.finalPrice ?? item.unitPrice) * item.quantity;
-                return acc + itemTotal;
-            }
-            return acc;
-        }, 0);
+      return items.reduce((acc, item) => {
+        if (!item.isTaxExempt) {
+          const itemTotal = (item.finalPrice ?? item.unitPrice) * item.quantity;
+          return acc + itemTotal;
+        }
+        return acc;
+      }, 0);
     };
 
     const netSubtotal = quote.subtotal - (quote.discountTotal || 0);
@@ -179,7 +180,7 @@ export default function QuoteDetailPage() {
 
 
     doc.setFontSize(10);
-    
+
     if (quote.discountTotal && quote.discountTotal > 0) {
       doc.text("Subtotal Bruto:", totalsX, finalY, { align: 'right' });
       doc.text(formatCurrency(quote.subtotal, quote.currency), valueX, finalY, { align: 'right' });
@@ -188,34 +189,34 @@ export default function QuoteDetailPage() {
       doc.text(`- ${formatCurrency(quote.discountTotal, quote.currency)}`, valueX, finalY, { align: 'right' });
       finalY += 7;
     }
-    
+
     doc.text("Subtotal Neto:", totalsX, finalY, { align: 'right' });
     doc.text(formatCurrency(netSubtotal, quote.currency), valueX, finalY, { align: 'right' });
     finalY += 7;
 
     if (showTaxableSubtotal) {
-        doc.setFontSize(8);
-        doc.text("Subtotal Gravable (para ITBIS):", totalsX, finalY, { align: 'right' });
-        doc.text(formatCurrency(taxableSubtotal, quote.currency), valueX, finalY, { align: 'right' });
-        finalY += 7;
-        doc.setFontSize(10);
+      doc.setFontSize(8);
+      doc.text("Subtotal Gravable (para ITBIS):", totalsX, finalY, { align: 'right' });
+      doc.text(formatCurrency(taxableSubtotal, quote.currency), valueX, finalY, { align: 'right' });
+      finalY += 7;
+      doc.setFontSize(10);
     }
-    
+
     if (quote.includeITBIS !== false) {
       doc.text("ITBIS (18%):", totalsX, finalY, { align: 'right' });
       doc.text(formatCurrency(quote.itbis || 0, quote.currency), valueX, finalY, { align: 'right' });
       finalY += 7;
     }
-    
+
     doc.setLineWidth(0.2);
     doc.line(totalsX - 10, finalY + 5, valueX, finalY + 5);
-    
+
     finalY += 11;
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.text("Total:", totalsX, finalY, { align: 'right' });
     doc.text(formatCurrency(quote.total, quote.currency), valueX, finalY, { align: 'right' });
-    
+
     doc.save(`cotizacion-${quote.quoteNumber}.pdf`);
     setIsDownloading(false);
   };
@@ -238,19 +239,19 @@ export default function QuoteDetailPage() {
 
   if (loading) {
     return (
-        <div className='flex flex-col gap-8'>
-            <PageHeader title={<Skeleton className='h-8 w-40'/>} description={<Skeleton className='h-5 w-32'/>} />
-            <Card className="p-8">
-                <Skeleton className='h-[600px] w-full'/>
-            </Card>
-        </div>
+      <div className='flex flex-col gap-8'>
+        <PageHeader title={<Skeleton className='h-8 w-40' />} description={<Skeleton className='h-5 w-32' />} />
+        <Card className="p-8">
+          <Skeleton className='h-[600px] w-full' />
+        </Card>
+      </div>
     )
   }
 
   if (!quote) {
     return notFound();
   }
-  
+
   const netSubtotal = quote.subtotal - (quote.discountTotal || 0);
   const taxableSubtotal = quote.items.reduce((acc, item) => {
     if (!item.isTaxExempt) {
@@ -270,7 +271,7 @@ export default function QuoteDetailPage() {
             Imprimir
           </Button>
           <Button onClick={handleDownloadPdf} disabled={isDownloading}>
-             {isDownloading ? (
+            {isDownloading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Download className="mr-2 h-4 w-4" />
@@ -278,7 +279,7 @@ export default function QuoteDetailPage() {
             Descargar PDF
           </Button>
           <Button onClick={handleConvertToInvoice} disabled={isConverting || quote.status === 'facturada'}>
-             {isConverting ? (
+            {isConverting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <FileText className="mr-2 h-4 w-4" />
@@ -300,7 +301,7 @@ export default function QuoteDetailPage() {
               <Badge variant={getStatusVariant(quote.status)} className="text-sm mt-1">{capitalizeFirstLetter(quote.status)}</Badge>
             </div>
           </div>
-          
+
           <Separator />
 
           <div className="grid md:grid-cols-2 gap-8">
@@ -346,35 +347,35 @@ export default function QuoteDetailPage() {
 
           <div className="flex justify-end">
             <div className="w-full max-w-sm space-y-2">
-                {quote.discountTotal && quote.discountTotal > 0 ? (
-                    <>
-                        <div className="flex justify-between">
-                            <span>Subtotal Bruto</span>
-                            <span>{formatCurrency(quote.subtotal, quote.currency)}</span>
-                        </div>
-                        <div className="flex justify-between text-muted-foreground">
-                            <span>Descuento</span>
-                            <span>- ${formatCurrency(quote.discountTotal, quote.currency)}</span>
-                        </div>
-                        <Separator />
-                    </>
-                ) : null}
-                <div className="flex justify-between">
-                    <span>Subtotal Neto</span>
-                    <span>{formatCurrency(netSubtotal, quote.currency)}</span>
-                </div>
-                {showTaxableSubtotal && (
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Subtotal Gravable (para ITBIS)</span>
-                      <span>{formatCurrency(taxableSubtotal, quote.currency)}</span>
+              {quote.discountTotal && quote.discountTotal > 0 ? (
+                <>
+                  <div className="flex justify-between">
+                    <span>Subtotal Bruto</span>
+                    <span>{formatCurrency(quote.subtotal, quote.currency)}</span>
                   </div>
-                )}
-                {quote.includeITBIS !== false && (
-                   <div className="flex justify-between">
-                       <span>ITBIS (18%)</span>
-                       <span>{formatCurrency(quote.itbis || 0, quote.currency)}</span>
-                   </div>
-                )}
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Descuento</span>
+                    <span>- ${formatCurrency(quote.discountTotal, quote.currency)}</span>
+                  </div>
+                  <Separator />
+                </>
+              ) : null}
+              <div className="flex justify-between">
+                <span>Subtotal Neto</span>
+                <span>{formatCurrency(netSubtotal, quote.currency)}</span>
+              </div>
+              {showTaxableSubtotal && (
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Subtotal Gravable (para ITBIS)</span>
+                  <span>{formatCurrency(taxableSubtotal, quote.currency)}</span>
+                </div>
+              )}
+              {quote.includeITBIS !== false && (
+                <div className="flex justify-between">
+                  <span>ITBIS (18%)</span>
+                  <span>{formatCurrency(quote.itbis || 0, quote.currency)}</span>
+                </div>
+              )}
               <Separator />
               <div className="flex justify-between font-bold text-lg">
                 <span>Total</span>
@@ -387,4 +388,3 @@ export default function QuoteDetailPage() {
     </>
   );
 }
-    

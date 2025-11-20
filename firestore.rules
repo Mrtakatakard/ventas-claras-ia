@@ -2,11 +2,43 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // --- REGLAS DE DEPURACIÓN INSEGURAS ---
-    // Permite que cualquier usuario autenticado lea y escriba en toda la base de datos.
-    // Usar solo para pruebas.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
     }
+
+    // Clients: Read-only for frontend (writes MUST go through Cloud Functions)
+    match /clients/{client} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Block direct writes
+    }
+
+    // Other collections: Allow read/write for authenticated users (Migration Phase)
+    // Once migrated to Cloud Functions, these should also be restricted.
+    match /clientTypes/{doc} { allow read, write: if isAuthenticated(); }
+    match /categories/{doc} { allow read, write: if isAuthenticated(); }
+    match /products/{document} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only allow writes via Cloud Functions
+    }
+    match /productBatches/{doc} { allow read, write: if isAuthenticated(); }
+    match /invoices/{doc} { allow read, write: if isAuthenticated(); }
+    match /quotes/{doc} { allow read, write: if isAuthenticated(); }
+    match /invoices/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+    match /quotes/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+    match /payments/{doc} { allow read, write: if isAuthenticated(); }
+    match /users/{doc} { allow read, write: if isAuthenticated(); }
+    match /counters/{doc} { allow read, write: if isAuthenticated(); } // For invoice numbers etc.
+    
+    // Default fallback (block everything else to be safe, or allow for dev?)
+    // For now, let's be explicit about what we allow above. 
+    // Anything not matched is denied by default in Firestore rules.
   }
 }

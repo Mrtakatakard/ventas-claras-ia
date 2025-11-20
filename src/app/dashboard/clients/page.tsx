@@ -18,7 +18,8 @@ import { AddClientForm } from "@/components/add-client-form"
 import { Badge } from "@/components/ui/badge"
 import type { Client, ClientType } from "@/lib/types"
 import { useAuth } from "@/lib/firebase/hooks"
-import { getClients, deleteClient, getClientTypes } from "@/lib/firebase/service"
+import { getClients, getClientTypes } from "@/lib/firebase/service"
+import { clientApi } from "@/lib/api/clientApi"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { Input } from "@/components/ui/input"
@@ -89,24 +90,24 @@ export default function ClientsPage() {
   };
 
   useEffect(() => {
-    if(userId) {
+    if (userId) {
       fetchData();
     }
   }, [userId]);
 
   useEffect(() => {
     if (searchParams.get('action') === 'create') {
-        handleAddNewClick();
+      handleAddNewClick();
     }
   }, [searchParams]);
-  
+
   const handleDelete = async (id: string) => {
     try {
-      await deleteClient(id);
+      await clientApi.delete(id);
       toast({ title: "Cliente eliminado" });
       fetchData();
-    } catch(e) {
-       toast({ title: "Error", description: "No se pudo eliminar el cliente", variant: "destructive" });
+    } catch (e) {
+      toast({ title: "Error", description: "No se pudo eliminar el cliente", variant: "destructive" });
     }
   }
 
@@ -120,7 +121,7 @@ export default function ClientsPage() {
     setEditingClient(client);
     setOpen(true);
   };
-  
+
   const handleAddNewClick = () => {
     setEditingClient(null);
     setOpen(true);
@@ -168,11 +169,11 @@ export default function ClientsPage() {
       };
       reader.readAsArrayBuffer(file);
     }
-     if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
-  
+
   const handleExport = () => {
     const dataToExport = clients.map(client => ({
       'Nombre': client.name,
@@ -192,32 +193,32 @@ export default function ClientsPage() {
 
   const sortedClients = useMemo(() => {
     let sortableItems = [...clients].filter(client =>
-        client.name.toLowerCase().includes(filter.toLowerCase()) ||
-        (client.email && client.email.toLowerCase().includes(filter.toLowerCase())) ||
-        client.phone.toLowerCase().includes(filter.toLowerCase())
+      client.name.toLowerCase().includes(filter.toLowerCase()) ||
+      (client.email && client.email.toLowerCase().includes(filter.toLowerCase())) ||
+      client.phone.toLowerCase().includes(filter.toLowerCase())
     );
 
     sortableItems.sort((a, b) => {
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
-        
-        let comparison = 0;
-        if (sortConfig.key === 'createdAt') {
-            const dateA = aValue ? new Date(aValue as any).getTime() : 0;
-            const dateB = bValue ? new Date(bValue as any).getTime() : 0;
-            comparison = dateA - dateB;
-        } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-            comparison = (aValue || 0) - (bValue || 0);
-        } else {
-            comparison = String(aValue || '').localeCompare(String(bValue || ''));
-        }
-        
-        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+
+      let comparison = 0;
+      if (sortConfig.key === 'createdAt') {
+        const dateA = aValue ? new Date(aValue as any).getTime() : 0;
+        const dateB = bValue ? new Date(bValue as any).getTime() : 0;
+        comparison = dateA - dateB;
+      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+        comparison = (aValue || 0) - (bValue || 0);
+      } else {
+        comparison = String(aValue || '').localeCompare(String(bValue || ''));
+      }
+
+      return sortConfig.direction === 'asc' ? comparison : -comparison;
     });
 
     return sortableItems;
   }, [clients, filter, sortConfig]);
-  
+
   const { paginatedClients, totalPages } = useMemo(() => {
     const startIndex = (currentPage - 1) * rowsPerPage;
     const endIndex = startIndex + rowsPerPage;
@@ -241,7 +242,7 @@ export default function ClientsPage() {
           <Upload className="mr-2 h-5 w-5" />
           Importar
         </Button>
-         <Button variant="outline" onClick={() => setIsManageTypesOpen(true)}>
+        <Button variant="outline" onClick={() => setIsManageTypesOpen(true)}>
           <Tags className="mr-2 h-5 w-5" />
           Gestionar Tipos
         </Button>
@@ -260,7 +261,7 @@ export default function ClientsPage() {
             <DialogHeader>
               <DialogTitle>{editingClient ? 'Editar Cliente' : 'Agregar Nuevo Cliente'}</DialogTitle>
               <DialogDescription>
-                 {editingClient
+                {editingClient
                   ? 'Modifica los datos del cliente.'
                   : 'Completa los datos para registrar un nuevo cliente.'
                 }
@@ -270,15 +271,15 @@ export default function ClientsPage() {
           </DialogContent>
         </Dialog>
       </PageHeader>
-      
-      <ManageClientTypesDialog 
+
+      <ManageClientTypesDialog
         isOpen={isManageTypesOpen}
         onClose={() => setIsManageTypesOpen(false)}
         onClientTypesUpdate={fetchData}
       />
 
       {importedData && (
-        <ImportClientsDialog 
+        <ImportClientsDialog
           isOpen={!!importedData}
           onClose={() => setImportedData(null)}
           importedData={importedData}
@@ -292,17 +293,17 @@ export default function ClientsPage() {
         <CardContent className="pt-6">
           <div className="flex items-center justify-between gap-4 mb-4">
             <div className="relative w-full max-w-sm">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                    type="search"
-                    placeholder="Buscar por nombre, email o teléfono..."
-                    className="w-full pl-8"
-                    value={filter}
-                    onChange={(e) => {
-                      setFilter(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                />
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Buscar por nombre, email o teléfono..."
+                className="w-full pl-8"
+                value={filter}
+                onChange={(e) => {
+                  setFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
             </div>
           </div>
           <TooltipProvider>
@@ -317,15 +318,15 @@ export default function ClientsPage() {
                   </TableHead>
                   <TableHead>
                     <Button variant="ghost" onClick={() => handleSort('clientTypeName')} className="-ml-4">
-                        Tipo de Cliente
-                        {sortConfig.key === 'clientTypeName' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                      </Button>
+                      Tipo de Cliente
+                      {sortConfig.key === 'clientTypeName' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                    </Button>
                   </TableHead>
                   <TableHead className="hidden md:table-cell">
                     <Button variant="ghost" onClick={() => handleSort('email')} className="-ml-4">
-                        Correo Electrónico
-                        {sortConfig.key === 'email' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                      </Button>
+                      Correo Electrónico
+                      {sortConfig.key === 'email' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                    </Button>
                   </TableHead>
                   <TableHead className="hidden sm:table-cell">
                     <Button variant="ghost" onClick={() => handleSort('phone')} className="-ml-4">
@@ -338,13 +339,13 @@ export default function ClientsPage() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  Array.from({length: 5}).map((_, i) => (
+                  Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell><Skeleton className="h-5 w-32"/></TableCell>
-                      <TableCell><Skeleton className="h-6 w-20 rounded-full"/></TableCell>
-                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-40"/></TableCell>
-                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24"/></TableCell>
-                      <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto rounded-full"/></TableCell>
+                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-40" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto rounded-full" /></TableCell>
                     </TableRow>
                   ))
                 ) : paginatedClients.length > 0 ? (
@@ -352,13 +353,13 @@ export default function ClientsPage() {
                     return (
                       <TableRow key={client.id}>
                         <TableCell className="font-medium max-w-[150px] truncate">
-                           <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span>{client.name}</span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>{client.name}</p>
-                              </TooltipContent>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>{client.name}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{client.name}</p>
+                            </TooltipContent>
                           </Tooltip>
                         </TableCell>
                         <TableCell>
@@ -381,9 +382,9 @@ export default function ClientsPage() {
                               <DropdownMenuItem asChild>
                                 <Link href={`/dashboard/clients/${client.id}`}><Eye className="mr-2 h-4 w-4" />Ver Detalles</Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleEditClick(client)}><Edit className="mr-2 h-4 w-4"/>Editar</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEditClick(client)}><Edit className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
                               <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(client.id)}>
-                                <Trash2 className="mr-2 h-4 w-4"/>Eliminar
+                                <Trash2 className="mr-2 h-4 w-4" />Eliminar
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

@@ -12,7 +12,8 @@ import { PageHeader } from "@/components/page-header"
 import { MoreHorizontal, PlusCircle, Trash2, Eye, Search, ChevronsUpDown, ArrowUp, ArrowDown, FileText, ArrowLeft, ArrowRight, ChevronsLeft, ChevronsRight, Edit } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/firebase/hooks";
-import { getQuotes, deleteQuote, convertQuoteToInvoice } from "@/lib/firebase/service";
+import { getQuotes } from "@/lib/firebase/service";
+import { quoteApi } from "@/lib/api/quoteApi";
 import type { Quote } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -45,7 +46,7 @@ export default function QuotesPage() {
       const data = await getQuotes(userId);
       setQuotes(data);
     } catch (error) {
-       toast({ title: "Error", description: "No se pudieron cargar las cotizaciones.", variant: "destructive" });
+      toast({ title: "Error", description: "No se pudieron cargar las cotizaciones.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -56,7 +57,7 @@ export default function QuotesPage() {
       fetchQuotes();
     }
   }, [userId]);
-  
+
   const formatCurrency = (num: number, currency?: 'DOP' | 'USD') => {
     return new Intl.NumberFormat('es-DO', { style: 'currency', currency: currency || 'DOP', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
   };
@@ -74,7 +75,7 @@ export default function QuotesPage() {
   const handleConvertToInvoice = async (quoteId: string) => {
     if (!userId) return;
     try {
-      const newInvoiceId = await convertQuoteToInvoice(quoteId, userId);
+      const newInvoiceId = await quoteApi.convertToInvoice(quoteId, userId);
       toast({
         title: "Cotización Convertida",
         description: "La cotización se ha convertido a factura y el stock ha sido actualizado.",
@@ -101,7 +102,7 @@ export default function QuotesPage() {
     if (!string) return string;
     return string.charAt(0).toUpperCase() + string.slice(1);
   };
-  
+
   const handleSort = (key: SortKey) => {
     let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -118,26 +119,26 @@ export default function QuotesPage() {
     );
 
     sortableItems.sort((a, b) => {
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
-        
-        let comparison = 0;
-        if (sortConfig.key === 'issueDate' || sortConfig.key === 'dueDate' || sortConfig.key === 'createdAt') {
-            const dateA = aValue ? new Date(aValue as any).getTime() : 0;
-            const dateB = bValue ? new Date(bValue as any).getTime() : 0;
-            comparison = dateA - dateB;
-        } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-            comparison = aValue - bValue;
-        } else {
-            comparison = String(aValue).localeCompare(String(bValue));
-        }
-        
-        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+
+      let comparison = 0;
+      if (sortConfig.key === 'issueDate' || sortConfig.key === 'dueDate' || sortConfig.key === 'createdAt') {
+        const dateA = aValue ? new Date(aValue as any).getTime() : 0;
+        const dateB = bValue ? new Date(bValue as any).getTime() : 0;
+        comparison = dateA - dateB;
+      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+        comparison = aValue - bValue;
+      } else {
+        comparison = String(aValue).localeCompare(String(bValue));
+      }
+
+      return sortConfig.direction === 'asc' ? comparison : -comparison;
     });
 
     return sortableItems;
   }, [quotes, filter, sortConfig]);
-  
+
   const { paginatedQuotes, totalPages } = useMemo(() => {
     const startIndex = (currentPage - 1) * rowsPerPage;
     const endIndex = startIndex + rowsPerPage;
@@ -184,34 +185,34 @@ export default function QuotesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>
-                   <Button variant="ghost" onClick={() => handleSort('quoteNumber')} className="-ml-4">
-                      Cotización #
-                      {sortConfig.key === 'quoteNumber' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
+                  <Button variant="ghost" onClick={() => handleSort('quoteNumber')} className="-ml-4">
+                    Cotización #
+                    {sortConfig.key === 'quoteNumber' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                  </Button>
                 </TableHead>
                 <TableHead>
-                   <Button variant="ghost" onClick={() => handleSort('clientName')} className="-ml-4">
-                      Cliente
-                      {sortConfig.key === 'clientName' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
+                  <Button variant="ghost" onClick={() => handleSort('clientName')} className="-ml-4">
+                    Cliente
+                    {sortConfig.key === 'clientName' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                  </Button>
                 </TableHead>
                 <TableHead className="hidden md:table-cell">
-                   <Button variant="ghost" onClick={() => handleSort('issueDate')} className="-ml-4">
-                      Fecha Emisión
-                      {sortConfig.key === 'issueDate' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
+                  <Button variant="ghost" onClick={() => handleSort('issueDate')} className="-ml-4">
+                    Fecha Emisión
+                    {sortConfig.key === 'issueDate' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                  </Button>
                 </TableHead>
                 <TableHead className="hidden sm:table-cell text-right">
-                   <Button variant="ghost" onClick={() => handleSort('total')} className="ml-auto -mr-4 flex">
-                      Total
-                      {sortConfig.key === 'total' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
+                  <Button variant="ghost" onClick={() => handleSort('total')} className="ml-auto -mr-4 flex">
+                    Total
+                    {sortConfig.key === 'total' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                  </Button>
                 </TableHead>
                 <TableHead className="hidden sm:table-cell">
                   <Button variant="ghost" onClick={() => handleSort('status')} className="-ml-4">
-                      Estado
-                      {sortConfig.key === 'status' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
+                    Estado
+                    {sortConfig.key === 'status' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                  </Button>
                 </TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -220,12 +221,12 @@ export default function QuotesPage() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell><Skeleton className="h-5 w-20"/></TableCell>
-                    <TableCell><Skeleton className="h-5 w-32"/></TableCell>
-                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24"/></TableCell>
-                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24"/></TableCell>
-                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-6 w-20 rounded-full"/></TableCell>
-                    <TableCell><Skeleton className="h-8 w-8 ml-auto rounded-full"/></TableCell>
+                    <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-8 ml-auto rounded-full" /></TableCell>
                   </TableRow>
                 ))
               ) : paginatedQuotes.length > 0 ? (
@@ -251,17 +252,17 @@ export default function QuotesPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                           <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/quotes/${quote.id}`}><Eye className="mr-2 h-4 w-4"/>Ver Detalles</Link>
+                            <Link href={`/dashboard/quotes/${quote.id}`}><Eye className="mr-2 h-4 w-4" />Ver Detalles</Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild disabled={quote.status === 'facturada'}>
                             <Link href={`/dashboard/quotes/${quote.id}/edit`} className={quote.status === 'facturada' ? 'pointer-events-none' : ''}>
-                              <Edit className="mr-2 h-4 w-4"/>Editar
+                              <Edit className="mr-2 h-4 w-4" />Editar
                             </Link>
                           </DropdownMenuItem>
-                           {quote.status !== 'facturada' && (
+                          {quote.status !== 'facturada' && (
                             <DropdownMenuItem onClick={() => handleConvertToInvoice(quote.id)}>
-                                <FileText className="mr-2 h-4 w-4" />
-                                Convertir a Factura
+                              <FileText className="mr-2 h-4 w-4" />
+                              Convertir a Factura
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
@@ -277,7 +278,7 @@ export default function QuotesPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center h-24">
-                     {filter ? 'No se encontraron cotizaciones.' : 'No hay cotizaciones. ¡Crea la primera!'}
+                    {filter ? 'No se encontraron cotizaciones.' : 'No hay cotizaciones. ¡Crea la primera!'}
                   </TableCell>
                 </TableRow>
               )}
