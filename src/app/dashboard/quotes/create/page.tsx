@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -15,15 +14,16 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Trash2, PackageSearch, Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/hooks';
-import { getClients, getProducts, getClientTypes } from '@/lib/firebase/service';
-import { quoteApi } from '@/lib/api/quoteApi';
 import type { Client, Product, InvoiceItem, Quote, ClientType, Address } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ClientSelector } from '@/components/client-selector';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-
+import { useQuotes } from '@/hooks/useQuotes';
+import { useClients } from '@/hooks/useClients';
+import { useProducts } from '@/hooks/useProducts';
+import { formatCurrency } from '@/lib/utils';
 
 type QuoteItemState = {
     id: number;
@@ -39,11 +39,10 @@ export default function CreateQuotePage() {
     const router = useRouter();
     const { toast } = useToast();
     const { userId } = useAuth();
+    const { createQuote } = useQuotes();
+    const { clients, clientTypes, isLoadingClients, isLoadingClientTypes } = useClients();
+    const { products, isLoadingProducts } = useProducts();
 
-    const [clients, setClients] = useState<Client[]>([]);
-    const [products, setProducts] = useState<Product[]>([]);
-    const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
-    const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
     const [selectedClientId, setSelectedClientId] = useState<string | undefined>(undefined);
@@ -54,40 +53,15 @@ export default function CreateQuotePage() {
     const [items, setItems] = useState<QuoteItemState[]>([{ id: 1, productId: '', quantity: 1, discount: 0, numberOfPeople: 1 }]);
     const [includeITBIS, setIncludeITBIS] = useState(true);
 
-    const formatCurrency = (num: number, currency?: 'DOP' | 'USD') => {
-        return new Intl.NumberFormat('es-DO', { style: 'currency', currency: currency || 'DOP', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
-    };
+    const loading = isLoadingClients || isLoadingClientTypes || isLoadingProducts;
 
-    useEffect(() => {
-        const fetchData = async () => {
-            if (!userId) return;
-            setLoading(true);
-            try {
-                const [clientsData, productsData, clientTypesData] = await Promise.all([
-                    getClients(userId),
-                    getProducts(userId),
-                    getClientTypes(userId)
-                ]);
-
-                const clientTypesMap = new Map(clientTypesData.map(ct => [ct.id, ct.name]));
-                const clientsWithTypeName = clientsData.map(client => ({
-                    ...client,
-                    clientTypeName: clientTypesMap.get(client.clientTypeId) || 'Sin asignar'
-                }));
-
-                setClients(clientsWithTypeName);
-                setProducts(productsData);
-                setClientTypes(clientTypesData);
-            } catch (error) {
-                toast({ title: "Error", description: "No se pudieron cargar los datos necesarios.", variant: "destructive" });
-            } finally {
-                setLoading(false);
-            }
-        };
-        if (userId) {
-            fetchData();
-        }
-    }, [userId, toast]);
+    const clientsWithTypeName = useMemo(() => {
+        const clientTypesMap = new Map(clientTypes.map(ct => [ct.id, ct.name]));
+        return clients.map(client => ({
+            ...client,
+            clientTypeName: clientTypesMap.get(client.clientTypeId) || 'Sin asignar'
+        }));
+    }, [clients, clientTypes]);
 
     const availableProducts = useMemo(() => {
         return products.filter(p => p.currency === quoteCurrency);
@@ -98,7 +72,7 @@ export default function CreateQuotePage() {
         setItems([{ id: 1, productId: '', quantity: 1, discount: 0, numberOfPeople: 1 }]);
     }
 
-    const selectedClient = useMemo(() => clients.find((c) => c.id === selectedClientId), [selectedClientId, clients]);
+    const selectedClient = useMemo(() => clientsWithTypeName.find((c) => c.id === selectedClientId), [selectedClientId, clientsWithTypeName]);
 
     useEffect(() => {
         if (selectedClient?.addresses?.length) {
@@ -273,8 +247,7 @@ export default function CreateQuotePage() {
         const newItbis = includeITBIS ? currentTaxableSubtotal * ITBIS_RATE : 0;
         const newTotal = newNetSubtotal + newItbis;
 
-        const newQuote: Omit<Quote, 'id'> = {
-            quoteNumber: `COT-${Date.now().toString().slice(-6)}`,
+        const newQuote: Omit<Quote, 'id' | 'createdAt' | 'isActive' | 'quoteNumber'> = {
             clientId: selectedClient.id,
             clientName: selectedClient.name,
             clientEmail: selectedClient.email,
@@ -289,13 +262,11 @@ export default function CreateQuotePage() {
             status: 'borrador',
             currency: quoteCurrency,
             includeITBIS: includeITBIS,
-            isActive: true,
             userId,
-            createdAt: new Date(),
         };
 
         try {
-            await quoteApi.create(newQuote);
+            await createQuote(newQuote);
             toast({
                 title: "Cotización creada",
                 description: "La cotización se ha creado exitosamente.",
@@ -455,7 +426,7 @@ export default function CreateQuotePage() {
                                         <div className="space-y-2">
                                             <Label htmlFor="client">Cliente</Label>
                                             <ClientSelector
-                                                clients={clients}
+                                                clients={clientsWithTypeName}
                                                 selectedClientId={selectedClientId}
                                                 onSelectClient={setSelectedClientId}
                                             />
