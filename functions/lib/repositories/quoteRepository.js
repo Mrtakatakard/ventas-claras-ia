@@ -1,20 +1,17 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.quoteRepository = void 0;
-const index_1 = require("../index");
+import { db } from "../index";
 const COLLECTION_NAME = "quotes";
-exports.quoteRepository = {
+export const quoteRepository = {
     async create(quote) {
-        await index_1.db.collection(COLLECTION_NAME).doc(quote.id).set(quote);
+        await db.collection(COLLECTION_NAME).doc(quote.id).set(quote);
     },
     async update(id, data) {
-        await index_1.db.collection(COLLECTION_NAME).doc(id).update(data);
+        await db.collection(COLLECTION_NAME).doc(id).update(data);
     },
     async delete(id) {
-        await index_1.db.collection(COLLECTION_NAME).doc(id).delete();
+        await db.collection(COLLECTION_NAME).doc(id).delete();
     },
     async get(id) {
-        const doc = await index_1.db.collection(COLLECTION_NAME).doc(id).get();
+        const doc = await db.collection(COLLECTION_NAME).doc(id).get();
         return doc.exists ? doc.data() : null;
     }
 };

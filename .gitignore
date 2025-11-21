@@ -29,3 +29,6 @@ Thumbs.db
 **/.cache/puppeteer/
 **/chrome-linux/
 **/Chromium.app/
+
+# Sentry Config File
+.env.sentry-build-plugin

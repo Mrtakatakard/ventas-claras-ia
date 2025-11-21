@@ -1,54 +1,18 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.addPayment = exports.getReceivables = exports.deleteInvoice = exports.updateInvoice = exports.createInvoice = void 0;
-const invoiceRepository_1 = require("../repositories/invoiceRepository");
-const index_1 = require("../index");
-const functions = __importStar(require("firebase-functions"));
-const firestore_1 = require("firebase-admin/firestore");
-const counterService_1 = require("./counterService");
-const createInvoice = async (invoiceData, userId) => {
-    const invoiceId = index_1.db.collection("invoices").doc().id;
+import { invoiceRepository } from "../repositories/invoiceRepository";
+import { db } from "../index";
+import * as functions from "firebase-functions";
+import { FieldValue } from "firebase-admin/firestore";
+import { counterService } from "./counterService";
+export const createInvoice = async (invoiceData, userId) => {
+    const invoiceId = db.collection("invoices").doc().id;
     // Generate sequential invoice number
-    const invoiceNumber = await counterService_1.counterService.getNextNumber('invoices', userId, 'INV');
+    const invoiceNumber = await counterService.getNextNumber('invoices', userId, 'INV');
     const newInvoice = Object.assign(Object.assign({}, invoiceData), { id: invoiceId, userId, createdAt: new Date(), isActive: true, status: 'pendiente', balanceDue: invoiceData.total, payments: [], invoiceNumber: invoiceNumber });
-    await index_1.db.runTransaction(async (transaction) => {
+    await db.runTransaction(async (transaction) => {
         var _a;
         // 1. Check stock availability and decrement
         for (const item of newInvoice.items) {
-            const productRef = index_1.db.collection("products").doc(item.productId);
+            const productRef = db.collection("products").doc(item.productId);
             const productDoc = await transaction.get(productRef);
             if (!productDoc.exists) {
                 throw new functions.https.HttpsError("not-found", `Producto ${item.productName} no encontrado.`);
@@ -60,15 +24,14 @@ const createInvoice = async (invoiceData, userId) => {
             transaction.update(productRef, { stock: currentStock - item.quantity });
         }
         // 2. Create Invoice
-        const invoiceRef = index_1.db.collection("invoices").doc(invoiceId);
+        const invoiceRef = db.collection("invoices").doc(invoiceId);
         transaction.set(invoiceRef, newInvoice);
     });
     return invoiceId;
 };
-exports.createInvoice = createInvoice;
-const updateInvoice = async (id, updatedData, userId) => {
-    await index_1.db.runTransaction(async (transaction) => {
-        const invoiceRef = index_1.db.collection("invoices").doc(id);
+export const updateInvoice = async (id, updatedData, userId) => {
+    await db.runTransaction(async (transaction) => {
+        const invoiceRef = db.collection("invoices").doc(id);
         const invoiceDoc = await transaction.get(invoiceRef);
         if (!invoiceDoc.exists) {
             throw new functions.https.HttpsError("not-found", "Factura no encontrada.");
@@ -86,7 +49,7 @@ const updateInvoice = async (id, updatedData, userId) => {
             // 2. Read all product documents
             const productDocs = {};
             for (const pid of Array.from(productIds)) {
-                const ref = index_1.db.collection("products").doc(pid);
+                const ref = db.collection("products").doc(pid);
                 const doc = await transaction.get(ref);
                 if (doc.exists) {
                     productDocs[pid] = { ref, data: doc.data() };
@@ -119,11 +82,10 @@ const updateInvoice = async (id, updatedData, userId) => {
         transaction.update(invoiceRef, Object.assign({}, updatedData));
     });
 };
-exports.updateInvoice = updateInvoice;
-const deleteInvoice = async (id, userId) => {
-    await index_1.db.runTransaction(async (transaction) => {
+export const deleteInvoice = async (id, userId) => {
+    await db.runTransaction(async (transaction) => {
         var _a;
-        const invoiceRef = index_1.db.collection("invoices").doc(id);
+        const invoiceRef = db.collection("invoices").doc(id);
         const invoiceDoc = await transaction.get(invoiceRef);
         if (!invoiceDoc.exists) {
             throw new functions.https.HttpsError("not-found", "Factura no encontrada.");
@@ -137,7 +99,7 @@ const deleteInvoice = async (id, userId) => {
         }
         // Restore stock
         for (const item of invoice.items) {
-            const productRef = index_1.db.collection("products").doc(item.productId);
+            const productRef = db.collection("products").doc(item.productId);
             const productDoc = await transaction.get(productRef);
             if (productDoc.exists) {
                 const currentStock = ((_a = productDoc.data()) === null || _a === void 0 ? void 0 : _a.stock) || 0;
@@ -147,15 +109,13 @@ const deleteInvoice = async (id, userId) => {
         transaction.delete(invoiceRef);
     });
 };
-exports.deleteInvoice = deleteInvoice;
-const getReceivables = async (userId) => {
-    return await invoiceRepository_1.invoiceRepository.getReceivables(userId);
+export const getReceivables = async (userId) => {
+    return await invoiceRepository.getReceivables(userId);
 };
-exports.getReceivables = getReceivables;
-const addPayment = async (invoiceId, paymentData, userId) => {
-    return await index_1.db.runTransaction(async (transaction) => {
+export const addPayment = async (invoiceId, paymentData, userId) => {
+    return await db.runTransaction(async (transaction) => {
         var _a;
-        const invoiceRef = index_1.db.collection("invoices").doc(invoiceId);
+        const invoiceRef = db.collection("invoices").doc(invoiceId);
         const invoiceDoc = await transaction.get(invoiceRef);
         if (!invoiceDoc.exists) {
             throw new functions.https.HttpsError("not-found", "Factura no encontrada.");
@@ -194,12 +154,11 @@ const addPayment = async (invoiceId, paymentData, userId) => {
             newStatus = 'parcialmente pagada';
         }
         transaction.update(invoiceRef, {
-            payments: firestore_1.FieldValue.arrayUnion(newPayment),
+            payments: FieldValue.arrayUnion(newPayment),
             balanceDue: finalBalance,
             status: newStatus
         });
         return newPayment;
     });
 };
-exports.addPayment = addPayment;
 //# sourceMappingURL=invoiceService.js.map

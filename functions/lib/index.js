@@ -1,54 +1,21 @@
-"use strict";
 /**
  * @fileoverview Main entry point for Firebase Functions.
  * This file should only import and export functions from other modules.
  */
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.quoteController = exports.invoiceController = exports.productController = exports.clientController = exports.general = exports.team = exports.db = exports.app = void 0;
-const admin = __importStar(require("firebase-admin"));
+import * as admin from "firebase-admin";
 // Initialize Firebase Admin SDK
-exports.app = admin.initializeApp();
-exports.db = admin.firestore();
-// Exporting specific functions for better organization
-exports.team = __importStar(require("./team/invite"));
-// export * as invoicing from "./invoicing/receivables"; // Deprecated
-// export * as deleteInvoice from "./invoicing/deleteInvoice"; // Deprecated
-exports.general = __importStar(require("./general/contact"));
-exports.clientController = __importStar(require("./controllers/clientController"));
-exports.productController = __importStar(require("./controllers/productController"));
-exports.invoiceController = __importStar(require("./controllers/invoiceController"));
-exports.quoteController = __importStar(require("./controllers/quoteController"));
+export const app = admin.initializeApp();
+export const db = admin.firestore();
+import * as team_1 from "./team/invite";
+export { team_1 as team };
+import * as general_1 from "./general/contact";
+export { general_1 as general };
+import * as clientController_1 from "./controllers/clientController";
+export { clientController_1 as clientController };
+import * as productController_1 from "./controllers/productController";
+export { productController_1 as productController };
+import * as invoiceController_1 from "./controllers/invoiceController";
+export { invoiceController_1 as invoiceController };
+import * as quoteController_1 from "./controllers/quoteController";
+export { quoteController_1 as quoteController };
 //# sourceMappingURL=index.js.map
