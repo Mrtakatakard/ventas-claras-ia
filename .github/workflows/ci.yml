@@ -117,13 +117,56 @@ jobs:
     if: always()
     
     steps:
-      - name: Check if all jobs succeeded
-        run: |
-          if [ "${{ needs.lint-and-typecheck.result }}" != "success" ] || \
-             [ "${{ needs.test-frontend.result }}" != "success" ] || \
-             [ "${{ needs.test-functions.result }}" != "success" ] || \
-             [ "${{ needs.build.result }}" != "success" ]; then
-            echo "One or more jobs failed"
+      - run: |
+          if [[ ${{ needs.lint-and-typecheck.result }} == 'success' && ${{ needs.test-frontend.result }} == 'success' && ${{ needs.test-functions.result }} == 'success' && ${{ needs.build.result }} == 'success' ]]; then
+            echo "All checks passed"
+            exit 0
+          else
+            echo "One or more checks failed"
             exit 1
           fi
-          echo "All checks passed successfully!"
+
+  # deploy-staging:
+  #   needs: [status-check]
+  #   runs-on: ubuntu-latest
+  #  if: github.ref == 'refs/heads/development' && needs.status-check.result == 'success'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Setup Node
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+  #     - run: npm ci
+  #     - run: npm run build
+  #     - name: Deploy to Staging
+  #       uses: FirebaseExtended/action-hosting-deploy@v0
+  #       with:
+  #         repoToken: ${{ secrets.GITHUB_TOKEN }}
+  #         firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING }}
+  #         channelId: live
+  #         projectId: ${{ secrets.FIREBASE_PROJECT_STAGING }}
+  #       env:
+  #         FIREBASE_CLI_EXPERIMENTS: webframeworks
+
+  # deploy-production:
+  #   needs: [status-check]
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main' && needs.status-check.result == 'success'
+  #   environment: production
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Setup Node
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+  #     - run: npm ci
+  #     - run: npm run build
+  #     - name: Deploy to Production
+  #       uses: FirebaseExtended/action-hosting-deploy@v0
+  #       with:
+  #         repoToken: ${{ secrets.GITHUB_TOKEN }}
+  #         firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PROD }}
+  #         channelId: live
+  #         projectId: ${{ secrets.FIREBASE_PROJECT_PROD }}
+  #       env:
+  #         FIREBASE_CLI_EXPERIMENTS: webframeworks

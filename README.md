@@ -183,19 +183,6 @@ npm run build
 npm run start
 ```
 
-## 📦 Deployment
-
-### Producción
-
-El proyecto usa GitHub Actions para CI/CD automático:
-
-1. **Push a `main`**: Despliega a producción (requiere aprobación manual)
-2. **Push a `develop`**: Despliega a staging automáticamente
-3. **Pull Requests**: Ejecuta tests y checks de calidad
-
-### Deployment Manual
-
-```bash
 # Build y deploy a Firebase
 npm run build
 firebase deploy

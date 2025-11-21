@@ -74,6 +74,8 @@
     "@types/react": "^18.3.0",
     "@vitest/coverage-v8": "^4.0.12",
     "@vitest/ui": "^4.0.12",
+    "eslint": "9.39.1",
+    "eslint-config-next": "16.0.3",
     "genkit-cli": "1.5.0",
     "jsdom": "^27.2.0",
     "postcss": "^8",
