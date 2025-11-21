@@ -11,7 +11,16 @@
 .firebase/
 firebase-debug.log
 firestore-debug.log
+ui-debug.log
 firestore_export/
+
+# Functions
+/functions/lib/
+/functions/coverage/
+
+# Testing
+/coverage/
+__snapshots__/
 
 # Env files
 .env
@@ -19,10 +28,22 @@ firestore_export/
 
 # Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+.idx/
+
+# TypeScript
+*.tsbuildinfo
+tsconfig.tsbuildinfo
 
 # Puppeteer / Chromium caches
 **/.local-chromium/
@@ -32,3 +53,9 @@ Thumbs.db
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Nix files
+*.nix
+
+# Firebase hosting debug logs
+firebase-debug.log
