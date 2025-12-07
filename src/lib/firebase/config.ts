@@ -1,14 +1,24 @@
+
 // Import the functions you need from the SDKs you need
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { validateEnv } from "../env";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
+import { getFunctions } from "firebase/functions";
 
-// Validate environment variables before initializing Firebase
-const env = validateEnv();
+// Check if running in Firebase App Hosting (which injects FIREBASE_WEBAPP_CONFIG)
+const appHostingConfig = process.env.FIREBASE_WEBAPP_CONFIG
+  ? JSON.parse(process.env.FIREBASE_WEBAPP_CONFIG)
+  : null;
+
+// Validate environment variables ONLY if not in App Hosting
+if (!appHostingConfig) {
+  validateEnv();
+}
 
 if (typeof window === 'undefined') {
   // Fix for "TypeError: localStorage.getItem is not a function"
-  // Some dependency is polluting the global scope with a broken localStorage object (object with no methods).
-  // We detect this and remove it so libraries fall back to their safe server-side behavior.
   if (typeof localStorage !== 'undefined' && typeof localStorage.getItem !== 'function') {
     console.warn('Detected broken global localStorage on server. Removing it to prevent crashes.');
     try {
@@ -19,13 +29,9 @@ if (typeof window === 'undefined') {
     }
   }
 }
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
-import { getFunctions } from "firebase/functions";
 
-// Your web app's Firebase configuration is read from environment variables
-export const firebaseConfig = {
+// Your web app's Firebase configuration
+export const firebaseConfig = appHostingConfig || {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
