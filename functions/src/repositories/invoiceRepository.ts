@@ -1,7 +1,7 @@
-import { db } from "../config/firebase";
-import { Invoice } from "../types";
+import { db } from '../config/firebase';
+import { Invoice } from '../types';
 
-const COLLECTION_NAME = "invoices";
+const COLLECTION_NAME = 'invoices';
 
 export const invoiceRepository = {
     async create(invoice: Invoice): Promise<void> {
@@ -23,9 +23,9 @@ export const invoiceRepository = {
 
     async getReceivables(userId: string): Promise<Invoice[]> {
         const snapshot = await db.collection(COLLECTION_NAME)
-            .where("userId", "==", userId)
-            .where("balanceDue", ">", 0)
+            .where('userId', '==', userId)
+            .where('balanceDue', '>', 0)
             .get();
-        return snapshot.docs.map(doc => doc.data() as Invoice);
-    }
+        return snapshot.docs.map((doc) => doc.data() as Invoice);
+    },
 };

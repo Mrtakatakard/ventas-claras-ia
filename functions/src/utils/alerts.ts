@@ -1,4 +1,4 @@
-import { logger } from "./logger";
+import { logger } from './logger';
 
 /**
  * Basic alert when Sentry error rate exceeds threshold

@@ -1,17 +1,17 @@
-import { onCall, HttpsError } from "firebase-functions/v2/https";
-import * as invoiceService from "../services/invoiceService";
-import { createInvoiceSchema, updateInvoiceSchema, addPaymentSchema } from "../schema";
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import * as invoiceService from '../services/invoiceService';
+import { createInvoiceSchema, updateInvoiceSchema, addPaymentSchema } from '../schema';
 
 export const createInvoice = onCall({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new HttpsError("unauthenticated", "User must be logged in.");
+        throw new HttpsError('unauthenticated', 'User must be logged in.');
     }
     try {
         const data = createInvoiceSchema.parse(request.data);
         return await invoiceService.createInvoice(data, request.auth.uid);
     } catch (error: any) {
         if (error.issues) {
-            throw new HttpsError("invalid-argument", "Validation error", error.issues);
+            throw new HttpsError('invalid-argument', 'Validation error', error.issues);
         }
         throw error;
     }
@@ -19,7 +19,7 @@ export const createInvoice = onCall({ cors: true }, async (request) => {
 
 export const updateInvoice = onCall({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new HttpsError("unauthenticated", "User must be logged in.");
+        throw new HttpsError('unauthenticated', 'User must be logged in.');
     }
     try {
         const { id, ...data } = request.data;
@@ -30,7 +30,7 @@ export const updateInvoice = onCall({ cors: true }, async (request) => {
         return await invoiceService.updateInvoice(id, updateData, request.auth.uid);
     } catch (error: any) {
         if (error.issues) {
-            throw new HttpsError("invalid-argument", "Validation error", error.issues);
+            throw new HttpsError('invalid-argument', 'Validation error', error.issues);
         }
         throw error;
     }
@@ -38,21 +38,21 @@ export const updateInvoice = onCall({ cors: true }, async (request) => {
 
 export const deleteInvoice = onCall({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new HttpsError("unauthenticated", "User must be logged in.");
+        throw new HttpsError('unauthenticated', 'User must be logged in.');
     }
     return await invoiceService.deleteInvoice(request.data.id, request.auth.uid);
 });
 
 export const getReceivables = onCall({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new HttpsError("unauthenticated", "User must be logged in.");
+        throw new HttpsError('unauthenticated', 'User must be logged in.');
     }
     return await invoiceService.getReceivables(request.auth.uid);
 });
 
 export const addPayment = onCall({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new HttpsError("unauthenticated", "User must be logged in.");
+        throw new HttpsError('unauthenticated', 'User must be logged in.');
     }
     try {
         const validatedData = addPaymentSchema.parse(request.data);
@@ -67,13 +67,13 @@ export const addPayment = onCall({ cors: true }, async (request) => {
             paymentDate: paymentData.date,
             method: paymentData.method,
             note: paymentData.note,
-            imageUrl: paymentData.imageUrl
+            imageUrl: paymentData.imageUrl,
         };
 
         return await invoiceService.addPayment(invoiceId, servicePaymentData, request.auth.uid);
     } catch (error: any) {
         if (error.issues) {
-            throw new HttpsError("invalid-argument", "Validation error", error.issues);
+            throw new HttpsError('invalid-argument', 'Validation error', error.issues);
         }
         throw error;
     }

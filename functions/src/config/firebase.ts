@@ -1,4 +1,4 @@
-import * as admin from "firebase-admin";
+import * as admin from 'firebase-admin';
 
 // Initialize Firebase Admin SDK
 // Check if already initialized to avoid "default app already exists" errors

@@ -1,7 +1,7 @@
-import { db } from "../config/firebase";
-import { Product } from "../types";
+import { db } from '../config/firebase';
+import { Product } from '../types';
 
-const COLLECTION_NAME = "products";
+const COLLECTION_NAME = 'products';
 
 export const productRepository = {
     async create(product: Product): Promise<Product> {
@@ -25,10 +25,10 @@ export const productRepository = {
 
     async findByCode(code: string, userId: string): Promise<Product[]> {
         const snapshot = await db.collection(COLLECTION_NAME)
-            .where("userId", "==", userId)
-            .where("code", "==", code)
-            .where("isActive", "==", true)
+            .where('userId', '==', userId)
+            .where('code', '==', code)
+            .where('isActive', '==', true)
             .get();
-        return snapshot.docs.map(doc => doc.data() as Product);
-    }
+        return snapshot.docs.map((doc) => doc.data() as Product);
+    },
 };

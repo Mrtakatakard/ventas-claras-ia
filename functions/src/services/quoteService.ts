@@ -1,13 +1,13 @@
-import { quoteRepository } from "../repositories/quoteRepository";
-import * as invoiceService from "./invoiceService";
-import { Quote } from "../types";
-import { db } from "../config/firebase";
-import * as functions from "firebase-functions";
-import { counterService } from "./counterService";
+import { quoteRepository } from '../repositories/quoteRepository';
+import * as invoiceService from './invoiceService';
+import { Quote } from '../types';
+import { db } from '../config/firebase';
+import * as functions from 'firebase-functions';
+import { counterService } from './counterService';
 
 export const quoteService = {
     async createQuote(quoteData: Omit<Quote, 'id' | 'createdAt' | 'isActive' | 'quoteNumber' | 'status' | 'userId'>, userId: string): Promise<string> {
-        const quoteId = db.collection("quotes").doc().id;
+        const quoteId = db.collection('quotes').doc().id;
 
         // Generate sequential quote number
         const quoteNumber = await counterService.getNextNumber('quotes', userId, 'QT');
@@ -19,7 +19,7 @@ export const quoteService = {
             createdAt: new Date(),
             isActive: true,
             quoteNumber: quoteNumber,
-            status: 'borrador'
+            status: 'borrador',
         };
         await quoteRepository.create(newQuote);
         return quoteId;
@@ -28,10 +28,10 @@ export const quoteService = {
     async updateQuote(id: string, data: Partial<Quote>, userId: string): Promise<void> {
         const existingQuote = await quoteRepository.get(id);
         if (!existingQuote) {
-            throw new functions.https.HttpsError("not-found", "Cotización no encontrada.");
+            throw new functions.https.HttpsError('not-found', 'Cotización no encontrada.');
         }
         if (existingQuote.userId !== userId) {
-            throw new functions.https.HttpsError("permission-denied", "No tienes permiso para editar esta cotización.");
+            throw new functions.https.HttpsError('permission-denied', 'No tienes permiso para editar esta cotización.');
         }
         await quoteRepository.update(id, data);
     },
@@ -39,10 +39,10 @@ export const quoteService = {
     async deleteQuote(id: string, userId: string): Promise<void> {
         const existingQuote = await quoteRepository.get(id);
         if (!existingQuote) {
-            throw new functions.https.HttpsError("not-found", "Cotización no encontrada.");
+            throw new functions.https.HttpsError('not-found', 'Cotización no encontrada.');
         }
         if (existingQuote.userId !== userId) {
-            throw new functions.https.HttpsError("permission-denied", "No tienes permiso para eliminar esta cotización.");
+            throw new functions.https.HttpsError('permission-denied', 'No tienes permiso para eliminar esta cotización.');
         }
         await quoteRepository.delete(id);
     },
@@ -50,23 +50,23 @@ export const quoteService = {
     async convertQuoteToInvoice(quoteId: string, userId: string): Promise<string> {
         const quote = await quoteRepository.get(quoteId);
         if (!quote) {
-            throw new functions.https.HttpsError("not-found", "Cotización no encontrada.");
+            throw new functions.https.HttpsError('not-found', 'Cotización no encontrada.');
         }
         if (quote.userId !== userId) {
-            throw new functions.https.HttpsError("permission-denied", "No tienes permiso para convertir esta cotización.");
+            throw new functions.https.HttpsError('permission-denied', 'No tienes permiso para convertir esta cotización.');
         }
 
         // Create invoice data from quote
-        // Note: We need to generate a new invoice number. 
-        // For now, we'll assume the frontend or a separate trigger handles the sequential numbering, 
+        // Note: We need to generate a new invoice number.
+        // For now, we'll assume the frontend or a separate trigger handles the sequential numbering,
         // or we pass it in. But the legacy code didn't seem to pass it in `convertQuoteToInvoice`.
         // Let's check how legacy did it.
         // Legacy `convertQuoteToInvoice` in `service.ts` (line 270) seemed to just call `addInvoice`.
-        // `addInvoice` in legacy (line 359) generated a number if not provided? 
+        // `addInvoice` in legacy (line 359) generated a number if not provided?
         // Actually, `addInvoice` usually takes `invoiceData`.
 
         // To be safe and simple: We will create the invoice object here.
-        // We might need to fetch the next invoice number. 
+        // We might need to fetch the next invoice number.
         // For this iteration, let's assume the user will update the invoice number after creation or we use a placeholder.
         // Or better, we just copy the quote number as a reference.
 
@@ -84,7 +84,7 @@ export const quoteService = {
             total: quote.total,
             currency: quote.currency,
             quoteId: quote.id,
-            includeITBIS: quote.includeITBIS
+            includeITBIS: quote.includeITBIS,
         };
 
         const invoiceId = await invoiceService.createInvoice(invoiceData, userId);
@@ -93,5 +93,5 @@ export const quoteService = {
         await quoteRepository.update(quoteId, { status: 'facturada' });
 
         return invoiceId;
-    }
+    },
 };

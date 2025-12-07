@@ -1,12 +1,12 @@
-import { invoiceRepository } from "../repositories/invoiceRepository";
-import { Invoice, Payment } from "../types";
-import { db } from "../config/firebase";
-import * as functions from "firebase-functions";
-import { FieldValue } from "firebase-admin/firestore";
-import { counterService } from "./counterService";
+import { invoiceRepository } from '../repositories/invoiceRepository';
+import { Invoice, Payment } from '../types';
+import { db } from '../config/firebase';
+import * as functions from 'firebase-functions';
+import { FieldValue } from 'firebase-admin/firestore';
+import { counterService } from './counterService';
 
 export const createInvoice = async (invoiceData: Omit<Invoice, 'id' | 'createdAt' | 'isActive' | 'status' | 'balanceDue' | 'payments' | 'invoiceNumber' | 'userId'>, userId: string): Promise<string> => {
-    const invoiceId = db.collection("invoices").doc().id;
+    const invoiceId = db.collection('invoices').doc().id;
 
     // Generate sequential invoice number
     const invoiceNumber = await counterService.getNextNumber('invoices', userId, 'INV');
@@ -20,29 +20,29 @@ export const createInvoice = async (invoiceData: Omit<Invoice, 'id' | 'createdAt
         status: 'pendiente',
         balanceDue: invoiceData.total,
         payments: [],
-        invoiceNumber: invoiceNumber
+        invoiceNumber: invoiceNumber,
     };
 
     await db.runTransaction(async (transaction) => {
         // 1. Check stock availability and decrement
         for (const item of newInvoice.items) {
-            const productRef = db.collection("products").doc(item.productId);
+            const productRef = db.collection('products').doc(item.productId);
             const productDoc = await transaction.get(productRef);
 
             if (!productDoc.exists) {
-                throw new functions.https.HttpsError("not-found", `Producto ${item.productName} no encontrado.`);
+                throw new functions.https.HttpsError('not-found', `Producto ${item.productName} no encontrado.`);
             }
 
             const currentStock = productDoc.data()?.stock || 0;
             if (currentStock < item.quantity) {
-                throw new functions.https.HttpsError("failed-precondition", `Stock insuficiente para ${item.productName}. Disponible: ${currentStock}, Solicitado: ${item.quantity}`);
+                throw new functions.https.HttpsError('failed-precondition', `Stock insuficiente para ${item.productName}. Disponible: ${currentStock}, Solicitado: ${item.quantity}`);
             }
 
             transaction.update(productRef, { stock: currentStock - item.quantity });
         }
 
         // 2. Create Invoice
-        const invoiceRef = db.collection("invoices").doc(invoiceId);
+        const invoiceRef = db.collection('invoices').doc(invoiceId);
         transaction.set(invoiceRef, newInvoice);
     });
 
@@ -51,29 +51,29 @@ export const createInvoice = async (invoiceData: Omit<Invoice, 'id' | 'createdAt
 
 export const updateInvoice = async (id: string, updatedData: Partial<Invoice>, userId: string): Promise<void> => {
     await db.runTransaction(async (transaction) => {
-        const invoiceRef = db.collection("invoices").doc(id);
+        const invoiceRef = db.collection('invoices').doc(id);
         const invoiceDoc = await transaction.get(invoiceRef);
 
         if (!invoiceDoc.exists) {
-            throw new functions.https.HttpsError("not-found", "Factura no encontrada.");
+            throw new functions.https.HttpsError('not-found', 'Factura no encontrada.');
         }
 
         const currentInvoice = invoiceDoc.data() as Invoice;
         if (currentInvoice.userId !== userId) {
-            throw new functions.https.HttpsError("permission-denied", "No tienes permiso para editar esta factura.");
+            throw new functions.https.HttpsError('permission-denied', 'No tienes permiso para editar esta factura.');
         }
 
         // If items are modified, handle stock adjustments
         if (updatedData.items) {
             // 1. Identify all unique product IDs involved (old and new)
             const productIds = new Set<string>();
-            currentInvoice.items.forEach(item => productIds.add(item.productId));
-            updatedData.items.forEach(item => productIds.add(item.productId));
+            currentInvoice.items.forEach((item) => productIds.add(item.productId));
+            updatedData.items.forEach((item) => productIds.add(item.productId));
 
             // 2. Read all product documents
             const productDocs: { [key: string]: any } = {};
             for (const pid of Array.from(productIds)) {
-                const ref = db.collection("products").doc(pid);
+                const ref = db.collection('products').doc(pid);
                 const doc = await transaction.get(ref);
                 if (doc.exists) {
                     productDocs[pid] = { ref, data: doc.data() };
@@ -91,11 +91,11 @@ export const updateInvoice = async (id: string, updatedData: Partial<Invoice>, u
             // Apply new items
             for (const item of updatedData.items) {
                 if (!productDocs[item.productId]) {
-                    throw new functions.https.HttpsError("not-found", `Producto ${item.productName} no encontrado (ID: ${item.productId}).`);
+                    throw new functions.https.HttpsError('not-found', `Producto ${item.productName} no encontrado (ID: ${item.productId}).`);
                 }
                 const product = productDocs[item.productId];
                 if (product.data.stock < item.quantity) {
-                    throw new functions.https.HttpsError("failed-precondition", `Stock insuficiente para ${item.productName}. Disponible: ${product.data.stock}, Solicitado: ${item.quantity}`);
+                    throw new functions.https.HttpsError('failed-precondition', `Stock insuficiente para ${item.productName}. Disponible: ${product.data.stock}, Solicitado: ${item.quantity}`);
                 }
                 product.data.stock -= item.quantity;
             }
@@ -117,25 +117,25 @@ export const updateInvoice = async (id: string, updatedData: Partial<Invoice>, u
 
 export const deleteInvoice = async (id: string, userId: string): Promise<void> => {
     await db.runTransaction(async (transaction) => {
-        const invoiceRef = db.collection("invoices").doc(id);
+        const invoiceRef = db.collection('invoices').doc(id);
         const invoiceDoc = await transaction.get(invoiceRef);
 
         if (!invoiceDoc.exists) {
-            throw new functions.https.HttpsError("not-found", "Factura no encontrada.");
+            throw new functions.https.HttpsError('not-found', 'Factura no encontrada.');
         }
 
         const invoice = invoiceDoc.data() as Invoice;
         if (invoice.userId !== userId) {
-            throw new functions.https.HttpsError("permission-denied", "No tienes permiso para eliminar esta factura.");
+            throw new functions.https.HttpsError('permission-denied', 'No tienes permiso para eliminar esta factura.');
         }
 
         if (invoice.payments && invoice.payments.length > 0) {
-            throw new functions.https.HttpsError("failed-precondition", "No se pueden eliminar facturas con pagos aplicados.");
+            throw new functions.https.HttpsError('failed-precondition', 'No se pueden eliminar facturas con pagos aplicados.');
         }
 
         // Restore stock
         for (const item of invoice.items) {
-            const productRef = db.collection("products").doc(item.productId);
+            const productRef = db.collection('products').doc(item.productId);
             const productDoc = await transaction.get(productRef);
 
             if (productDoc.exists) {
@@ -154,25 +154,25 @@ export const getReceivables = async (userId: string): Promise<Invoice[]> => {
 
 export const addPayment = async (invoiceId: string, paymentData: Omit<Payment, 'id' | 'receiptNumber' | 'currency' | 'status'>, userId: string): Promise<Payment> => {
     return await db.runTransaction(async (transaction) => {
-        const invoiceRef = db.collection("invoices").doc(invoiceId);
+        const invoiceRef = db.collection('invoices').doc(invoiceId);
         const invoiceDoc = await transaction.get(invoiceRef);
 
         if (!invoiceDoc.exists) {
-            throw new functions.https.HttpsError("not-found", "Factura no encontrada.");
+            throw new functions.https.HttpsError('not-found', 'Factura no encontrada.');
         }
 
         const invoice = invoiceDoc.data() as Invoice;
         if (invoice.userId !== userId) {
-            throw new functions.https.HttpsError("permission-denied", "No tienes permiso para modificar esta factura.");
+            throw new functions.https.HttpsError('permission-denied', 'No tienes permiso para modificar esta factura.');
         }
 
         const currentBalance = Math.round((invoice.balanceDue ?? invoice.total) * 100) / 100;
 
         if (paymentData.amount <= 0) {
-            throw new functions.https.HttpsError("invalid-argument", "El monto del pago debe ser mayor que cero.");
+            throw new functions.https.HttpsError('invalid-argument', 'El monto del pago debe ser mayor que cero.');
         }
         if (paymentData.amount > currentBalance + 0.001) {
-            throw new functions.https.HttpsError("failed-precondition", `El monto del pago (${paymentData.amount.toFixed(2)}) no puede ser mayor que el balance pendiente de ${currentBalance.toFixed(2)}.`);
+            throw new functions.https.HttpsError('failed-precondition', `El monto del pago (${paymentData.amount.toFixed(2)}) no puede ser mayor que el balance pendiente de ${currentBalance.toFixed(2)}.`);
         }
 
         const paymentId = new Date().toISOString() + Math.random();
@@ -203,7 +203,7 @@ export const addPayment = async (invoiceId: string, paymentData: Omit<Payment, '
         transaction.update(invoiceRef, {
             payments: FieldValue.arrayUnion(newPayment),
             balanceDue: finalBalance,
-            status: newStatus
+            status: newStatus,
         });
 
         return newPayment;

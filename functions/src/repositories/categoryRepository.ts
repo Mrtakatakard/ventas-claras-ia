@@ -1,7 +1,7 @@
-import { db } from "../config/firebase";
-import { Category } from "../types";
+import { db } from '../config/firebase';
+import { Category } from '../types';
 
-const COLLECTION_NAME = "categories";
+const COLLECTION_NAME = 'categories';
 
 export const categoryRepository = {
     async create(category: Category): Promise<void> {
@@ -10,8 +10,8 @@ export const categoryRepository = {
 
     async findByName(name: string, userId: string): Promise<Category | null> {
         const snapshot = await db.collection(COLLECTION_NAME)
-            .where("userId", "==", userId)
-            .where("name", "==", name)
+            .where('userId', '==', userId)
+            .where('name', '==', name)
             .limit(1)
             .get();
 
@@ -21,9 +21,9 @@ export const categoryRepository = {
 
     async getAll(userId: string): Promise<Category[]> {
         const snapshot = await db.collection(COLLECTION_NAME)
-            .where("userId", "==", userId)
-            .where("isActive", "==", true)
+            .where('userId', '==', userId)
+            .where('isActive', '==', true)
             .get();
-        return snapshot.docs.map(doc => doc.data() as Category);
-    }
+        return snapshot.docs.map((doc) => doc.data() as Category);
+    },
 };

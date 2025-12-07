@@ -1,5 +1,5 @@
-import * as Sentry from '@sentry/node'
-import * as functions from 'firebase-functions'
+import * as Sentry from '@sentry/node';
+import * as functions from 'firebase-functions';
 
 // Initialize Sentry for Firebase Functions
 if (process.env.SENTRY_DSN) {
@@ -7,7 +7,7 @@ if (process.env.SENTRY_DSN) {
         dsn: process.env.SENTRY_DSN,
         environment: process.env.FUNCTIONS_EMULATOR === 'true' ? 'development' : 'production',
         tracesSampleRate: 1.0,
-    })
+    });
 }
 
 export enum LogLevel {
@@ -32,7 +32,7 @@ export const logger = {
      */
     debug: (message: string, context?: LogContext) => {
         if (process.env.FUNCTIONS_EMULATOR === 'true') {
-            functions.logger.debug(message, context)
+            functions.logger.debug(message, context);
         }
     },
 
@@ -40,13 +40,13 @@ export const logger = {
      * Log informational messages
      */
     info: (message: string, context?: LogContext) => {
-        functions.logger.info(message, context)
+        functions.logger.info(message, context);
 
         if (process.env.FUNCTIONS_EMULATOR !== 'true') {
             Sentry.captureMessage(message, {
                 level: 'info',
                 extra: context,
-            })
+            });
         }
     },
 
@@ -54,13 +54,13 @@ export const logger = {
      * Log warning messages
      */
     warn: (message: string, context?: LogContext) => {
-        functions.logger.warn(message, context)
+        functions.logger.warn(message, context);
 
         if (process.env.FUNCTIONS_EMULATOR !== 'true') {
             Sentry.captureMessage(message, {
                 level: 'warning',
                 extra: context,
-            })
+            });
         }
     },
 
@@ -68,13 +68,13 @@ export const logger = {
      * Log error messages and exceptions
      */
     error: (error: Error | string, context?: LogContext) => {
-        const errorObj = typeof error === 'string' ? new Error(error) : error
-        functions.logger.error(errorObj.message, { ...context, stack: errorObj.stack })
+        const errorObj = typeof error === 'string' ? new Error(error) : error;
+        functions.logger.error(errorObj.message, { ...context, stack: errorObj.stack });
 
         if (process.env.FUNCTIONS_EMULATOR !== 'true') {
             Sentry.captureException(errorObj, {
                 extra: context,
-            })
+            });
         }
     },
 
@@ -83,7 +83,7 @@ export const logger = {
      */
     setUser: (user: { id: string; email?: string }) => {
         if (process.env.FUNCTIONS_EMULATOR !== 'true') {
-            Sentry.setUser(user)
+            Sentry.setUser(user);
         }
     },
 
@@ -92,7 +92,7 @@ export const logger = {
      */
     clearUser: () => {
         if (process.env.FUNCTIONS_EMULATOR !== 'true') {
-            Sentry.setUser(null)
+            Sentry.setUser(null);
         }
     },
 
@@ -105,11 +105,11 @@ export const logger = {
     ): T => {
         return (async (...args: Parameters<T>) => {
             try {
-                return await fn(...args)
+                return await fn(...args);
             } catch (error) {
-                logger.error(error as Error, { functionName })
-                throw error
+                logger.error(error as Error, { functionName });
+                throw error;
             }
-        }) as T
+        }) as T;
     },
-}
+};

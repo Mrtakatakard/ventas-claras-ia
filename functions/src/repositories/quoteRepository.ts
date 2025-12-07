@@ -1,7 +1,7 @@
-import { db } from "../config/firebase";
-import { Quote } from "../types";
+import { db } from '../config/firebase';
+import { Quote } from '../types';
 
-const COLLECTION_NAME = "quotes";
+const COLLECTION_NAME = 'quotes';
 
 export const quoteRepository = {
     async create(quote: Quote): Promise<void> {
@@ -19,5 +19,5 @@ export const quoteRepository = {
     async get(id: string): Promise<Quote | null> {
         const doc = await db.collection(COLLECTION_NAME).doc(id).get();
         return doc.exists ? (doc.data() as Quote) : null;
-    }
+    },
 };

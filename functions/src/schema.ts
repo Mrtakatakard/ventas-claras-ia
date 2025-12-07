@@ -37,13 +37,13 @@ export const paymentSchema = z.object({
 // We use .partial() or .omit() depending on the use case (create vs update)
 
 export const createInvoiceSchema = z.object({
-    clientId: z.string().min(1, "Client ID is required"),
-    clientName: z.string().min(1, "Client Name is required"),
-    clientEmail: z.string().email("Invalid client email"),
+    clientId: z.string().min(1, 'Client ID is required'),
+    clientName: z.string().min(1, 'Client Name is required'),
+    clientEmail: z.string().email('Invalid client email'),
     clientAddress: z.string().optional(),
     issueDate: z.string(),
     dueDate: z.string(),
-    items: z.array(invoiceItemSchema).min(1, "At least one item is required"),
+    items: z.array(invoiceItemSchema).min(1, 'At least one item is required'),
     subtotal: z.number().min(0),
     discountTotal: z.number().optional(),
     itbis: z.number().min(0),
@@ -58,8 +58,8 @@ export const updateInvoiceSchema = createInvoiceSchema.partial().extend({
 });
 
 export const addPaymentSchema = z.object({
-    invoiceId: z.string().min(1, "Invoice ID is required"),
-    amount: z.number().positive("Amount must be positive"),
+    invoiceId: z.string().min(1, 'Invoice ID is required'),
+    amount: z.number().positive('Amount must be positive'),
     date: z.string(),
     method: z.enum(['efectivo', 'transferencia', 'tarjeta']),
     note: z.string().optional(),
