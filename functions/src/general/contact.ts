@@ -4,23 +4,21 @@
  */
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
-
-const db = admin.firestore();
+import { db } from "../config/firebase";
 
 // This is a public-facing function.
 // It's configured with `cors: true` to be callable from the landing page.
 export const contactRequest = onCall({ cors: true }, async (request) => {
   const { name, email, company, message } = request.data;
-  
+
   // Basic validation
   if (!name || !email || !company || !message) {
     throw new HttpsError("invalid-argument", "Todos los campos son requeridos.");
   }
-  
+
   if (typeof email !== 'string' || !email.includes('@')) {
-      throw new HttpsError("invalid-argument", "El correo electrónico no es válido.");
+    throw new HttpsError("invalid-argument", "El correo electrónico no es válido.");
   }
 
   logger.info(`Nueva solicitud de contacto de: ${email}`);

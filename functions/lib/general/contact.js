@@ -1,24 +1,26 @@
+"use strict";
 /**
  * @fileoverview Cloud Function to handle contact form submissions from the landing page.
  */
-import { onCall, HttpsError } from "firebase-functions/v2/https";
-import * as admin from "firebase-admin";
-import * as logger from "firebase-functions/logger";
-const db = admin.firestore();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.contactRequest = void 0;
+const https_1 = require("firebase-functions/v2/https");
+const logger = require("firebase-functions/logger");
+const firebase_1 = require("../config/firebase");
 // This is a public-facing function.
 // It's configured with `cors: true` to be callable from the landing page.
-export const contactRequest = onCall({ cors: true }, async (request) => {
+exports.contactRequest = (0, https_1.onCall)({ cors: true }, async (request) => {
     const { name, email, company, message } = request.data;
     // Basic validation
     if (!name || !email || !company || !message) {
-        throw new HttpsError("invalid-argument", "Todos los campos son requeridos.");
+        throw new https_1.HttpsError("invalid-argument", "Todos los campos son requeridos.");
     }
     if (typeof email !== 'string' || !email.includes('@')) {
-        throw new HttpsError("invalid-argument", "El correo electrónico no es válido.");
+        throw new https_1.HttpsError("invalid-argument", "El correo electrónico no es válido.");
     }
     logger.info(`Nueva solicitud de contacto de: ${email}`);
     try {
-        await db.collection("contactRequests").add({
+        await firebase_1.db.collection("contactRequests").add({
             name,
             email,
             company,
@@ -31,7 +33,7 @@ export const contactRequest = onCall({ cors: true }, async (request) => {
     }
     catch (error) {
         logger.error("Error al guardar la solicitud de contacto:", error);
-        throw new HttpsError("internal", "Ocurrió un error al procesar tu solicitud.");
+        throw new https_1.HttpsError("internal", "Ocurrió un error al procesar tu solicitud.");
     }
 });
 //# sourceMappingURL=contact.js.map

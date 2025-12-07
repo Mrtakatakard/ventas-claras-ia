@@ -1,7 +1,7 @@
 import { quoteRepository } from "../repositories/quoteRepository";
 import * as invoiceService from "./invoiceService";
 import { Quote } from "../types";
-import { db } from "../index";
+import { db } from "../config/firebase";
 import * as functions from "firebase-functions";
 import { counterService } from "./counterService";
 

@@ -4,18 +4,15 @@
  */
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
-
-const db = admin.firestore();
-const auth = admin.auth();
+import { db, auth } from "../config/firebase";
 
 export const inviteTeamMember = onCall(async (request) => {
   // Ensure the user is authenticated before proceeding.
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Debes estar autenticado para realizar esta acción.");
   }
-  
+
   const { name, email, role, planId } = request.data;
   const inviterUid = request.auth.uid; // Now guaranteed to exist.
 
@@ -25,7 +22,7 @@ export const inviteTeamMember = onCall(async (request) => {
   const inviterRole = inviterProfileSnap.data()?.role;
 
   if (!inviterProfileSnap.exists || !['admin', 'superAdmin'].includes(inviterRole)) {
-      throw new HttpsError('permission-denied', 'No tienes permiso para invitar a nuevos miembros.');
+    throw new HttpsError('permission-denied', 'No tienes permiso para invitar a nuevos miembros.');
   }
 
   // Input validation
@@ -43,7 +40,7 @@ export const inviteTeamMember = onCall(async (request) => {
       displayName: name,
       disabled: false,
     });
-    
+
     logger.info(`Usuario de Auth creado: ${userRecord.uid}`);
 
     // 2. Create user profile in Firestore
@@ -60,15 +57,15 @@ export const inviteTeamMember = onCall(async (request) => {
     });
 
     logger.info(`Perfil de Firestore creado para ${userRecord.uid} con invitedBy: ${inviterUid}`);
-    
+
     logger.info(`Invitación para ${email} procesada exitosamente.`);
-    
+
     return { success: true, message: `Invitación enviada a ${email}.` };
-    
+
   } catch (error: any) {
     logger.error("Error al invitar miembro:", error);
     if (error.code === 'auth/email-already-exists') {
-        throw new HttpsError('already-exists', 'Este correo electrónico ya está en uso.');
+      throw new HttpsError('already-exists', 'Este correo electrónico ya está en uso.');
     }
     throw new HttpsError("internal", "Ocurrió un error inesperado al procesar la invitación.");
   }

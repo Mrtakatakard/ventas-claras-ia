@@ -4,11 +4,10 @@
  * This file should only import and export functions from other modules.
  */
 
-import * as admin from "firebase-admin";
 
-// Initialize Firebase Admin SDK
-export const app = admin.initializeApp();
-export const db = admin.firestore();
+// import { app, db } from "./config/firebase";
+
+// export { app, db };
 
 
 // Exporting specific functions for better organization

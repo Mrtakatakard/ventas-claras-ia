@@ -2,7 +2,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { quoteService } from "../services/quoteService";
 import { createQuoteSchema, updateQuoteSchema } from "../schema";
 
-export const createQuote = onCall(async (request) => {
+export const createQuote = onCall({ cors: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "User must be logged in.");
     }
@@ -17,7 +17,7 @@ export const createQuote = onCall(async (request) => {
     }
 });
 
-export const updateQuote = onCall(async (request) => {
+export const updateQuote = onCall({ cors: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "User must be logged in.");
     }
@@ -34,14 +34,14 @@ export const updateQuote = onCall(async (request) => {
     }
 });
 
-export const deleteQuote = onCall(async (request) => {
+export const deleteQuote = onCall({ cors: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "User must be logged in.");
     }
     return await quoteService.deleteQuote(request.data.id, request.auth.uid);
 });
 
-export const convertQuoteToInvoice = onCall(async (request) => {
+export const convertQuoteToInvoice = onCall({ cors: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "User must be logged in.");
     }

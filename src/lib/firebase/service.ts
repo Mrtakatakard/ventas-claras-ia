@@ -295,7 +295,7 @@ export const getAllInvoicesForAdmin = async () => {
 
 // Team Members (now managed as User Profiles)
 export const inviteTeamMember = async (data: { name: string; email: string; role: 'admin' | 'user' }) => {
-  const invite = httpsCallable(functions, 'inviteTeamMember');
+  const invite = httpsCallable(functions, 'team-inviteTeamMember');
   try {
     // The planId is now hardcoded to 'pro' as a default, which is a sensible default.
     // The backend function will use this.

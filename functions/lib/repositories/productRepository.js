@@ -1,24 +1,27 @@
-import { db } from "../index";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.productRepository = void 0;
+const firebase_1 = require("../config/firebase");
 const COLLECTION_NAME = "products";
-export const productRepository = {
+exports.productRepository = {
     async create(product) {
-        await db.collection(COLLECTION_NAME).doc(product.id).set(product);
+        await firebase_1.db.collection(COLLECTION_NAME).doc(product.id).set(product);
         return product;
     },
     async update(id, data) {
-        await db.collection(COLLECTION_NAME).doc(id).update(data);
+        await firebase_1.db.collection(COLLECTION_NAME).doc(id).update(data);
     },
     async delete(id) {
-        await db.collection(COLLECTION_NAME).doc(id).update({ isActive: false });
+        await firebase_1.db.collection(COLLECTION_NAME).doc(id).update({ isActive: false });
     },
     async get(id) {
-        const doc = await db.collection(COLLECTION_NAME).doc(id).get();
+        const doc = await firebase_1.db.collection(COLLECTION_NAME).doc(id).get();
         if (!doc.exists)
             return null;
         return doc.data();
     },
     async findByCode(code, userId) {
-        const snapshot = await db.collection(COLLECTION_NAME)
+        const snapshot = await firebase_1.db.collection(COLLECTION_NAME)
             .where("userId", "==", userId)
             .where("code", "==", code)
             .where("isActive", "==", true)

@@ -1,4 +1,4 @@
-import { db } from "../index";
+import { db } from "../config/firebase";
 import { Quote } from "../types";
 
 const COLLECTION_NAME = "quotes";

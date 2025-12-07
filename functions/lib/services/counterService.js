@@ -1,10 +1,13 @@
-import { db } from "../index";
-import * as functions from "firebase-functions";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.counterService = void 0;
+const firebase_1 = require("../config/firebase");
+const functions = require("firebase-functions");
 /**
  * Service for managing sequential counters in Firestore.
  * Used for generating invoice numbers, quote numbers, etc.
  */
-export const counterService = {
+exports.counterService = {
     /**
      * Gets the next sequential number for a given counter type.
      * Uses a Firestore transaction to ensure uniqueness.
@@ -16,9 +19,9 @@ export const counterService = {
      * @returns Formatted number string (e.g., 'INV-000001')
      */
     async getNextNumber(counterType, userId, prefix = '', padding = 6) {
-        const counterRef = db.collection('counters').doc(`${userId}_${counterType}`);
+        const counterRef = firebase_1.db.collection('counters').doc(`${userId}_${counterType}`);
         try {
-            const nextValue = await db.runTransaction(async (transaction) => {
+            const nextValue = await firebase_1.db.runTransaction(async (transaction) => {
                 var _a;
                 const counterDoc = await transaction.get(counterRef);
                 let currentValue = 0;
@@ -53,7 +56,7 @@ export const counterService = {
      * @param startValue - Starting value (default: 0)
      */
     async initializeCounter(counterType, userId, startValue = 0) {
-        const counterRef = db.collection('counters').doc(`${userId}_${counterType}`);
+        const counterRef = firebase_1.db.collection('counters').doc(`${userId}_${counterType}`);
         const counterDoc = await counterRef.get();
         if (!counterDoc.exists) {
             await counterRef.set({

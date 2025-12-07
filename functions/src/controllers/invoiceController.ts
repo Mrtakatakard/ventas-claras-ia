@@ -2,7 +2,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as invoiceService from "../services/invoiceService";
 import { createInvoiceSchema, updateInvoiceSchema, addPaymentSchema } from "../schema";
 
-export const createInvoice = onCall(async (request) => {
+export const createInvoice = onCall({ cors: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "User must be logged in.");
     }
@@ -17,7 +17,7 @@ export const createInvoice = onCall(async (request) => {
     }
 });
 
-export const updateInvoice = onCall(async (request) => {
+export const updateInvoice = onCall({ cors: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "User must be logged in.");
     }
@@ -36,21 +36,21 @@ export const updateInvoice = onCall(async (request) => {
     }
 });
 
-export const deleteInvoice = onCall(async (request) => {
+export const deleteInvoice = onCall({ cors: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "User must be logged in.");
     }
     return await invoiceService.deleteInvoice(request.data.id, request.auth.uid);
 });
 
-export const getReceivables = onCall(async (request) => {
+export const getReceivables = onCall({ cors: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "User must be logged in.");
     }
     return await invoiceService.getReceivables(request.auth.uid);
 });
 
-export const addPayment = onCall(async (request) => {
+export const addPayment = onCall({ cors: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "User must be logged in.");
     }

@@ -1,14 +1,17 @@
+"use strict";
 /**
  * @fileoverview Cloud Function to handle fetching accounts receivable.
  */
-import { onCall, HttpsError } from "firebase-functions/v2/https";
-import * as admin from "firebase-admin";
-import * as logger from "firebase-functions/logger";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getAccountsReceivable = void 0;
+const https_1 = require("firebase-functions/v2/https");
+const admin = require("firebase-admin");
+const logger = require("firebase-functions/logger");
 const db = admin.firestore();
-export const getAccountsReceivable = onCall(async (request) => {
+exports.getAccountsReceivable = (0, https_1.onCall)(async (request) => {
     // 1. Authentication check
     if (!request.auth) {
-        throw new HttpsError("unauthenticated", "Debes estar autenticado para realizar esta acción.");
+        throw new https_1.HttpsError("unauthenticated", "Debes estar autenticado para realizar esta acción.");
     }
     const uid = request.auth.uid;
     logger.info(`Fetching accounts receivable for user: ${uid}`);
@@ -28,7 +31,7 @@ export const getAccountsReceivable = onCall(async (request) => {
         logger.error("Error fetching accounts receivable:", error);
         // This could happen if the composite index is not created yet.
         // The error message in the Firebase console will contain a link to create it.
-        throw new HttpsError("failed-precondition", "No se pudieron cargar los datos porque falta un índice en la base de datos. Revisa los logs de la función en la consola de Firebase para encontrar un enlace para crearlo automáticamente.");
+        throw new https_1.HttpsError("failed-precondition", "No se pudieron cargar los datos porque falta un índice en la base de datos. Revisa los logs de la función en la consola de Firebase para encontrar un enlace para crearlo automáticamente.");
     }
 });
 //# sourceMappingURL=receivables.js.map

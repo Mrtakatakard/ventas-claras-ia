@@ -1,6 +1,9 @@
-import * as admin from "firebase-admin";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ClientRepository = void 0;
+const admin = require("firebase-admin");
 const db = admin.firestore();
-export const ClientRepository = {
+exports.ClientRepository = {
     async create(client) {
         const docRef = db.collection("clients").doc();
         const newClient = Object.assign({ id: docRef.id }, client);

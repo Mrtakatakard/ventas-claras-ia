@@ -1,17 +1,20 @@
-import { db } from "../index";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.quoteRepository = void 0;
+const firebase_1 = require("../config/firebase");
 const COLLECTION_NAME = "quotes";
-export const quoteRepository = {
+exports.quoteRepository = {
     async create(quote) {
-        await db.collection(COLLECTION_NAME).doc(quote.id).set(quote);
+        await firebase_1.db.collection(COLLECTION_NAME).doc(quote.id).set(quote);
     },
     async update(id, data) {
-        await db.collection(COLLECTION_NAME).doc(id).update(data);
+        await firebase_1.db.collection(COLLECTION_NAME).doc(id).update(data);
     },
     async delete(id) {
-        await db.collection(COLLECTION_NAME).doc(id).delete();
+        await firebase_1.db.collection(COLLECTION_NAME).doc(id).delete();
     },
     async get(id) {
-        const doc = await db.collection(COLLECTION_NAME).doc(id).get();
+        const doc = await firebase_1.db.collection(COLLECTION_NAME).doc(id).get();
         return doc.exists ? doc.data() : null;
     }
 };

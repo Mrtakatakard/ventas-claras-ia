@@ -1,10 +1,13 @@
-import { ClientRepository } from "../repositories/clientRepository";
-import { HttpsError } from "firebase-functions/v2/https";
-export const ClientService = {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ClientService = void 0;
+const clientRepository_1 = require("../repositories/clientRepository");
+const https_1 = require("firebase-functions/v2/https");
+exports.ClientService = {
     async createClient(data, userId) {
         // Basic Validation
         if (!data.name || !data.phone) {
-            throw new HttpsError("invalid-argument", "El nombre y el teléfono son obligatorios.");
+            throw new https_1.HttpsError("invalid-argument", "El nombre y el teléfono son obligatorios.");
         }
         const newClient = {
             name: data.name,
@@ -27,31 +30,31 @@ export const ClientService = {
                 gavePlan: false,
             },
         };
-        return await ClientRepository.create(newClient);
+        return await clientRepository_1.ClientRepository.create(newClient);
     },
     async updateClient(id, data, userId) {
-        const client = await ClientRepository.get(id);
+        const client = await clientRepository_1.ClientRepository.get(id);
         if (!client) {
-            throw new HttpsError("not-found", "Cliente no encontrado.");
+            throw new https_1.HttpsError("not-found", "Cliente no encontrado.");
         }
         if (client.userId !== userId) {
-            throw new HttpsError("permission-denied", "No tienes permiso para editar este cliente.");
+            throw new https_1.HttpsError("permission-denied", "No tienes permiso para editar este cliente.");
         }
         // Prevent overwriting critical fields
         delete data.id;
         delete data.userId;
         delete data.createdAt;
-        await ClientRepository.update(id, data);
+        await clientRepository_1.ClientRepository.update(id, data);
     },
     async deleteClient(id, userId) {
-        const client = await ClientRepository.get(id);
+        const client = await clientRepository_1.ClientRepository.get(id);
         if (!client) {
-            throw new HttpsError("not-found", "Cliente no encontrado.");
+            throw new https_1.HttpsError("not-found", "Cliente no encontrado.");
         }
         if (client.userId !== userId) {
-            throw new HttpsError("permission-denied", "No tienes permiso para eliminar este cliente.");
+            throw new https_1.HttpsError("permission-denied", "No tienes permiso para eliminar este cliente.");
         }
-        await ClientRepository.delete(id);
+        await clientRepository_1.ClientRepository.delete(id);
     }
 };
 //# sourceMappingURL=clientService.js.map

@@ -1,39 +1,42 @@
-import { quoteRepository } from "../repositories/quoteRepository";
-import * as invoiceService from "./invoiceService";
-import { db } from "../index";
-import * as functions from "firebase-functions";
-import { counterService } from "./counterService";
-export const quoteService = {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.quoteService = void 0;
+const quoteRepository_1 = require("../repositories/quoteRepository");
+const invoiceService = require("./invoiceService");
+const firebase_1 = require("../config/firebase");
+const functions = require("firebase-functions");
+const counterService_1 = require("./counterService");
+exports.quoteService = {
     async createQuote(quoteData, userId) {
-        const quoteId = db.collection("quotes").doc().id;
+        const quoteId = firebase_1.db.collection("quotes").doc().id;
         // Generate sequential quote number
-        const quoteNumber = await counterService.getNextNumber('quotes', userId, 'QT');
+        const quoteNumber = await counterService_1.counterService.getNextNumber('quotes', userId, 'QT');
         const newQuote = Object.assign(Object.assign({}, quoteData), { id: quoteId, userId, createdAt: new Date(), isActive: true, quoteNumber: quoteNumber, status: 'borrador' });
-        await quoteRepository.create(newQuote);
+        await quoteRepository_1.quoteRepository.create(newQuote);
         return quoteId;
     },
     async updateQuote(id, data, userId) {
-        const existingQuote = await quoteRepository.get(id);
+        const existingQuote = await quoteRepository_1.quoteRepository.get(id);
         if (!existingQuote) {
             throw new functions.https.HttpsError("not-found", "Cotización no encontrada.");
         }
         if (existingQuote.userId !== userId) {
             throw new functions.https.HttpsError("permission-denied", "No tienes permiso para editar esta cotización.");
         }
-        await quoteRepository.update(id, data);
+        await quoteRepository_1.quoteRepository.update(id, data);
     },
     async deleteQuote(id, userId) {
-        const existingQuote = await quoteRepository.get(id);
+        const existingQuote = await quoteRepository_1.quoteRepository.get(id);
         if (!existingQuote) {
             throw new functions.https.HttpsError("not-found", "Cotización no encontrada.");
         }
         if (existingQuote.userId !== userId) {
             throw new functions.https.HttpsError("permission-denied", "No tienes permiso para eliminar esta cotización.");
         }
-        await quoteRepository.delete(id);
+        await quoteRepository_1.quoteRepository.delete(id);
     },
     async convertQuoteToInvoice(quoteId, userId) {
-        const quote = await quoteRepository.get(quoteId);
+        const quote = await quoteRepository_1.quoteRepository.get(quoteId);
         if (!quote) {
             throw new functions.https.HttpsError("not-found", "Cotización no encontrada.");
         }
@@ -70,7 +73,7 @@ export const quoteService = {
         };
         const invoiceId = await invoiceService.createInvoice(invoiceData, userId);
         // Update quote status
-        await quoteRepository.update(quoteId, { status: 'facturada' });
+        await quoteRepository_1.quoteRepository.update(quoteId, { status: 'facturada' });
         return invoiceId;
     }
 };

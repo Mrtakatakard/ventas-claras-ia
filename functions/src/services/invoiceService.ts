@@ -1,6 +1,6 @@
 import { invoiceRepository } from "../repositories/invoiceRepository";
 import { Invoice, Payment } from "../types";
-import { db } from "../index";
+import { db } from "../config/firebase";
 import * as functions from "firebase-functions";
 import { FieldValue } from "firebase-admin/firestore";
 import { counterService } from "./counterService";

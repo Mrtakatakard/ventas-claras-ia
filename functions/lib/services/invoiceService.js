@@ -1,18 +1,21 @@
-import { invoiceRepository } from "../repositories/invoiceRepository";
-import { db } from "../index";
-import * as functions from "firebase-functions";
-import { FieldValue } from "firebase-admin/firestore";
-import { counterService } from "./counterService";
-export const createInvoice = async (invoiceData, userId) => {
-    const invoiceId = db.collection("invoices").doc().id;
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.addPayment = exports.getReceivables = exports.deleteInvoice = exports.updateInvoice = exports.createInvoice = void 0;
+const invoiceRepository_1 = require("../repositories/invoiceRepository");
+const firebase_1 = require("../config/firebase");
+const functions = require("firebase-functions");
+const firestore_1 = require("firebase-admin/firestore");
+const counterService_1 = require("./counterService");
+const createInvoice = async (invoiceData, userId) => {
+    const invoiceId = firebase_1.db.collection("invoices").doc().id;
     // Generate sequential invoice number
-    const invoiceNumber = await counterService.getNextNumber('invoices', userId, 'INV');
+    const invoiceNumber = await counterService_1.counterService.getNextNumber('invoices', userId, 'INV');
     const newInvoice = Object.assign(Object.assign({}, invoiceData), { id: invoiceId, userId, createdAt: new Date(), isActive: true, status: 'pendiente', balanceDue: invoiceData.total, payments: [], invoiceNumber: invoiceNumber });
-    await db.runTransaction(async (transaction) => {
+    await firebase_1.db.runTransaction(async (transaction) => {
         var _a;
         // 1. Check stock availability and decrement
         for (const item of newInvoice.items) {
-            const productRef = db.collection("products").doc(item.productId);
+            const productRef = firebase_1.db.collection("products").doc(item.productId);
             const productDoc = await transaction.get(productRef);
             if (!productDoc.exists) {
                 throw new functions.https.HttpsError("not-found", `Producto ${item.productName} no encontrado.`);
@@ -24,14 +27,15 @@ export const createInvoice = async (invoiceData, userId) => {
             transaction.update(productRef, { stock: currentStock - item.quantity });
         }
         // 2. Create Invoice
-        const invoiceRef = db.collection("invoices").doc(invoiceId);
+        const invoiceRef = firebase_1.db.collection("invoices").doc(invoiceId);
         transaction.set(invoiceRef, newInvoice);
     });
     return invoiceId;
 };
-export const updateInvoice = async (id, updatedData, userId) => {
-    await db.runTransaction(async (transaction) => {
-        const invoiceRef = db.collection("invoices").doc(id);
+exports.createInvoice = createInvoice;
+const updateInvoice = async (id, updatedData, userId) => {
+    await firebase_1.db.runTransaction(async (transaction) => {
+        const invoiceRef = firebase_1.db.collection("invoices").doc(id);
         const invoiceDoc = await transaction.get(invoiceRef);
         if (!invoiceDoc.exists) {
             throw new functions.https.HttpsError("not-found", "Factura no encontrada.");
@@ -49,7 +53,7 @@ export const updateInvoice = async (id, updatedData, userId) => {
             // 2. Read all product documents
             const productDocs = {};
             for (const pid of Array.from(productIds)) {
-                const ref = db.collection("products").doc(pid);
+                const ref = firebase_1.db.collection("products").doc(pid);
                 const doc = await transaction.get(ref);
                 if (doc.exists) {
                     productDocs[pid] = { ref, data: doc.data() };
@@ -82,10 +86,11 @@ export const updateInvoice = async (id, updatedData, userId) => {
         transaction.update(invoiceRef, Object.assign({}, updatedData));
     });
 };
-export const deleteInvoice = async (id, userId) => {
-    await db.runTransaction(async (transaction) => {
+exports.updateInvoice = updateInvoice;
+const deleteInvoice = async (id, userId) => {
+    await firebase_1.db.runTransaction(async (transaction) => {
         var _a;
-        const invoiceRef = db.collection("invoices").doc(id);
+        const invoiceRef = firebase_1.db.collection("invoices").doc(id);
         const invoiceDoc = await transaction.get(invoiceRef);
         if (!invoiceDoc.exists) {
             throw new functions.https.HttpsError("not-found", "Factura no encontrada.");
@@ -99,7 +104,7 @@ export const deleteInvoice = async (id, userId) => {
         }
         // Restore stock
         for (const item of invoice.items) {
-            const productRef = db.collection("products").doc(item.productId);
+            const productRef = firebase_1.db.collection("products").doc(item.productId);
             const productDoc = await transaction.get(productRef);
             if (productDoc.exists) {
                 const currentStock = ((_a = productDoc.data()) === null || _a === void 0 ? void 0 : _a.stock) || 0;
@@ -109,13 +114,15 @@ export const deleteInvoice = async (id, userId) => {
         transaction.delete(invoiceRef);
     });
 };
-export const getReceivables = async (userId) => {
-    return await invoiceRepository.getReceivables(userId);
+exports.deleteInvoice = deleteInvoice;
+const getReceivables = async (userId) => {
+    return await invoiceRepository_1.invoiceRepository.getReceivables(userId);
 };
-export const addPayment = async (invoiceId, paymentData, userId) => {
-    return await db.runTransaction(async (transaction) => {
+exports.getReceivables = getReceivables;
+const addPayment = async (invoiceId, paymentData, userId) => {
+    return await firebase_1.db.runTransaction(async (transaction) => {
         var _a;
-        const invoiceRef = db.collection("invoices").doc(invoiceId);
+        const invoiceRef = firebase_1.db.collection("invoices").doc(invoiceId);
         const invoiceDoc = await transaction.get(invoiceRef);
         if (!invoiceDoc.exists) {
             throw new functions.https.HttpsError("not-found", "Factura no encontrada.");
@@ -154,11 +161,12 @@ export const addPayment = async (invoiceId, paymentData, userId) => {
             newStatus = 'parcialmente pagada';
         }
         transaction.update(invoiceRef, {
-            payments: FieldValue.arrayUnion(newPayment),
+            payments: firestore_1.FieldValue.arrayUnion(newPayment),
             balanceDue: finalBalance,
             status: newStatus
         });
         return newPayment;
     });
 };
+exports.addPayment = addPayment;
 //# sourceMappingURL=invoiceService.js.map

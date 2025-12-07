@@ -1,4 +1,4 @@
-import { db } from "../index";
+import { db } from "../config/firebase";
 import { Category } from "../types";
 
 const COLLECTION_NAME = "categories";

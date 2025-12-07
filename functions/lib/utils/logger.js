@@ -1,5 +1,8 @@
-import * as Sentry from '@sentry/node';
-import * as functions from 'firebase-functions';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.logger = exports.LogLevel = void 0;
+const Sentry = require("@sentry/node");
+const functions = require("firebase-functions");
 // Initialize Sentry for Firebase Functions
 if (process.env.SENTRY_DSN) {
     Sentry.init({
@@ -8,17 +11,17 @@ if (process.env.SENTRY_DSN) {
         tracesSampleRate: 1.0,
     });
 }
-export var LogLevel;
+var LogLevel;
 (function (LogLevel) {
     LogLevel["DEBUG"] = "debug";
     LogLevel["INFO"] = "info";
     LogLevel["WARN"] = "warn";
     LogLevel["ERROR"] = "error";
-})(LogLevel || (LogLevel = {}));
+})(LogLevel || (exports.LogLevel = LogLevel = {}));
 /**
  * Structured logger for Firebase Functions with Sentry integration
  */
-export const logger = {
+exports.logger = {
     /**
      * Log debug messages (only in development)
      */
@@ -88,7 +91,7 @@ export const logger = {
                 return await fn(...args);
             }
             catch (error) {
-                logger.error(error, { functionName });
+                exports.logger.error(error, { functionName });
                 throw error;
             }
         });

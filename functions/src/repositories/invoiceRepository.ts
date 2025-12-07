@@ -1,4 +1,4 @@
-import { db } from "../index";
+import { db } from "../config/firebase";
 import { Invoice } from "../types";
 
 const COLLECTION_NAME = "invoices";

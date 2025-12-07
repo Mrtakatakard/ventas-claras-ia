@@ -2,7 +2,7 @@ import { productRepository } from "../repositories/productRepository";
 import { categoryRepository } from "../repositories/categoryRepository";
 import { Product, Category } from "../types";
 import * as functions from "firebase-functions";
-import { db } from "../index";
+import { db } from "../config/firebase";
 
 export const productService = {
     async createProduct(data: Omit<Product, "id" | "createdAt" | "isActive">, userId: string): Promise<string> {
