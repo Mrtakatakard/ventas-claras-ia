@@ -514,7 +514,7 @@ export default function ClientDetailPage() {
   const handleGenerateIcs = (reminder: Reminder) => {
     if (!client) return;
 
-    const toIcsDate = (date: Date) => date.toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
+    const toIcsDate = (date: Date) => date.toISOString().replace(new RegExp("[-" + ":.]", "g"), '').slice(0, 15) + 'Z';
     const startDate = new Date(reminder.dateTime);
     const endDate = new Date(startDate);
     endDate.setHours(startDate.getHours() + 1);
