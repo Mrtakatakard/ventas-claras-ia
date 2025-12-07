@@ -7,16 +7,16 @@ exports.ClientService = {
     async createClient(data, userId) {
         // Basic Validation
         if (!data.name || !data.phone) {
-            throw new https_1.HttpsError("invalid-argument", "El nombre y el teléfono son obligatorios.");
+            throw new https_1.HttpsError('invalid-argument', 'El nombre y el teléfono son obligatorios.');
         }
         const newClient = {
             name: data.name,
             phone: data.phone,
-            birthday: data.birthday || "",
-            email: data.email || "",
+            birthday: data.birthday || '',
+            email: data.email || '',
             addresses: data.addresses || [],
-            clientTypeId: data.clientTypeId || "",
-            clientTypeName: data.clientTypeName || "",
+            clientTypeId: data.clientTypeId || '',
+            clientTypeName: data.clientTypeName || '',
             userId: userId,
             createdAt: new Date(),
             isActive: true,
@@ -35,10 +35,10 @@ exports.ClientService = {
     async updateClient(id, data, userId) {
         const client = await clientRepository_1.ClientRepository.get(id);
         if (!client) {
-            throw new https_1.HttpsError("not-found", "Cliente no encontrado.");
+            throw new https_1.HttpsError('not-found', 'Cliente no encontrado.');
         }
         if (client.userId !== userId) {
-            throw new https_1.HttpsError("permission-denied", "No tienes permiso para editar este cliente.");
+            throw new https_1.HttpsError('permission-denied', 'No tienes permiso para editar este cliente.');
         }
         // Prevent overwriting critical fields
         delete data.id;
@@ -49,12 +49,12 @@ exports.ClientService = {
     async deleteClient(id, userId) {
         const client = await clientRepository_1.ClientRepository.get(id);
         if (!client) {
-            throw new https_1.HttpsError("not-found", "Cliente no encontrado.");
+            throw new https_1.HttpsError('not-found', 'Cliente no encontrado.');
         }
         if (client.userId !== userId) {
-            throw new https_1.HttpsError("permission-denied", "No tienes permiso para eliminar este cliente.");
+            throw new https_1.HttpsError('permission-denied', 'No tienes permiso para eliminar este cliente.');
         }
         await clientRepository_1.ClientRepository.delete(id);
-    }
+    },
 };
 //# sourceMappingURL=clientService.js.map

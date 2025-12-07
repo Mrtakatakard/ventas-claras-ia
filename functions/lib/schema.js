@@ -35,13 +35,13 @@ exports.paymentSchema = zod_1.z.object({
 // Main schemas for creation/updates
 // We use .partial() or .omit() depending on the use case (create vs update)
 exports.createInvoiceSchema = zod_1.z.object({
-    clientId: zod_1.z.string().min(1, "Client ID is required"),
-    clientName: zod_1.z.string().min(1, "Client Name is required"),
-    clientEmail: zod_1.z.string().email("Invalid client email"),
+    clientId: zod_1.z.string().min(1, 'Client ID is required'),
+    clientName: zod_1.z.string().min(1, 'Client Name is required'),
+    clientEmail: zod_1.z.string().email('Invalid client email'),
     clientAddress: zod_1.z.string().optional(),
     issueDate: zod_1.z.string(),
     dueDate: zod_1.z.string(),
-    items: zod_1.z.array(exports.invoiceItemSchema).min(1, "At least one item is required"),
+    items: zod_1.z.array(exports.invoiceItemSchema).min(1, 'At least one item is required'),
     subtotal: zod_1.z.number().min(0),
     discountTotal: zod_1.z.number().optional(),
     itbis: zod_1.z.number().min(0),
@@ -54,8 +54,8 @@ exports.updateInvoiceSchema = exports.createInvoiceSchema.partial().extend({
     id: zod_1.z.string(),
 });
 exports.addPaymentSchema = zod_1.z.object({
-    invoiceId: zod_1.z.string().min(1, "Invoice ID is required"),
-    amount: zod_1.z.number().positive("Amount must be positive"),
+    invoiceId: zod_1.z.string().min(1, 'Invoice ID is required'),
+    amount: zod_1.z.number().positive('Amount must be positive'),
     date: zod_1.z.string(),
     method: zod_1.z.enum(['efectivo', 'transferencia', 'tarjeta']),
     note: zod_1.z.string().optional(),

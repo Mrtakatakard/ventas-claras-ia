@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.productRepository = void 0;
 const firebase_1 = require("../config/firebase");
-const COLLECTION_NAME = "products";
+const COLLECTION_NAME = 'products';
 exports.productRepository = {
     async create(product) {
         await firebase_1.db.collection(COLLECTION_NAME).doc(product.id).set(product);
@@ -22,11 +22,11 @@ exports.productRepository = {
     },
     async findByCode(code, userId) {
         const snapshot = await firebase_1.db.collection(COLLECTION_NAME)
-            .where("userId", "==", userId)
-            .where("code", "==", code)
-            .where("isActive", "==", true)
+            .where('userId', '==', userId)
+            .where('code', '==', code)
+            .where('isActive', '==', true)
             .get();
-        return snapshot.docs.map(doc => doc.data());
-    }
+        return snapshot.docs.map((doc) => doc.data());
+    },
 };
 //# sourceMappingURL=productRepository.js.map

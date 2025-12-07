@@ -9,14 +9,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { getClient, getInvoices, getProducts, getClientTypes } from '@/lib/firebase/service';
 import { invoiceApi } from '@/lib/api/invoiceApi';
 import { clientApi } from '@/lib/api/clientApi';
-import { getSalesInsights } from '@/ai/flows/sales-insights-flow';
+import { getSmartRefill } from '@/ai/flows/smart-refill-flow';
+import { getWhatsAppMessage } from '@/ai/flows/whatsapp-generator-flow';
+
 import { PageHeader } from '@/components/page-header';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Mail, Phone, Cake, PlusCircle, Tag, MoreHorizontal, MapPin, Download, Edit, Trash2, MoreVertical, ChevronsLeft, ArrowLeft, ArrowRight, ChevronsRight, DollarSign, Sparkles, Eye, Info, Clipboard } from 'lucide-react';
+import { Mail, Phone, Cake, PlusCircle, Tag, MoreHorizontal, MapPin, Download, Edit, Trash2, MoreVertical, ChevronsLeft, ArrowLeft, ArrowRight, ChevronsRight, DollarSign, Sparkles, Eye, Info, Clipboard, MessageSquare, CheckCircle2, Copy, Send } from 'lucide-react';
+import { DialogFooter } from "@/components/ui/dialog"
+
 import type { Client, Invoice, Reminder, Product, InvoiceItem, ClientType } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -60,6 +64,11 @@ export default function ClientDetailPage() {
   // AI Insights State
   const [insights, setInsights] = useState<string[] | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
+  const [refillOpportunities, setRefillOpportunities] = useState<any[] | null>(null);
+  const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
+  const [messageDraft, setMessageDraft] = useState('');
+  const [messageLoading, setMessageLoading] = useState(false);
+
 
   // Pagination States
   const [salesCurrentPage, setSalesCurrentPage] = useState(1);
@@ -141,28 +150,60 @@ export default function ClientDetailPage() {
   const canSeeAiInsights = planId === 'pro' || planId === 'legacy' || !planId;
 
   useEffect(() => {
-    if (!loading && client && insights === null && canSeeAiInsights) {
-      const fetchInsights = async () => {
+    if (!loading && client && refillOpportunities === null && canSeeAiInsights) {
+      const fetchRefills = async () => {
         setInsightsLoading(true);
         try {
-          const result = await getSalesInsights({
-            client: JSON.stringify(client),
-            invoices: JSON.stringify(invoices),
-            allProducts: JSON.stringify(products),
-            similarClientInvoices: JSON.stringify(similarClientInvoices),
+          // Prepare purchase history for the AI
+          const purchaseHistory = invoices.flatMap(inv =>
+            inv.items.map(item => `${item.productName} (Qty: ${item.quantity}, Date: ${inv.issueDate})`)
+          ).join('\n');
+
+          const result = await getSmartRefill({
+            clientName: client.name,
+            purchaseHistory: purchaseHistory,
+            currentDate: new Date().toISOString().split('T')[0],
           });
-          setInsights(result.insights);
-          logAnalyticsEvent('ai_insight_viewed', { client_id: id });
+
+          setRefillOpportunities(result.refillCandidates);
+          logAnalyticsEvent('ai_refills_viewed', { client_id: id });
         } catch (error) {
-          console.error("Error fetching sales insights:", error);
-          setInsights([]); // Set to empty array on error to prevent re-fetching
+          console.error("Error fetching smart refills:", error);
+          setRefillOpportunities([]);
         } finally {
           setInsightsLoading(false);
         }
       };
-      fetchInsights();
+      fetchRefills();
     }
-  }, [loading, client, invoices, products, similarClientInvoices, insights, id, canSeeAiInsights]);
+  }, [loading, client, invoices, refillOpportunities, id, canSeeAiInsights]);
+
+  const handleGenerateMessage = async (productName: string) => {
+    if (!client) return;
+    setIsMessageDialogOpen(true);
+    setMessageLoading(true);
+    setMessageDraft("Generando mensaje mágico... ✨");
+
+    try {
+      const result = await getWhatsAppMessage({
+        clientName: client.name,
+        productsToRefill: [productName],
+        tone: 'Casual'
+      });
+      setMessageDraft(result.message);
+    } catch (error) {
+      console.error("Error generating message", error);
+      setMessageDraft("Error al generar el mensaje. Intenta de nuevo.");
+    } finally {
+      setMessageLoading(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copiado", description: "Mensaje copiado al portapapeles" });
+  };
+
 
 
   useEffect(() => {
@@ -1016,43 +1057,57 @@ export default function ClientDetailPage() {
               </AccordionItem>
             </Card>
             {canSeeAiInsights && (
-              <Card>
+              <Card className="border-blue-200">
                 <AccordionItem value="ai-insights" className="border-b-0">
                   <AccordionTrigger className="p-6 text-left hover:no-underline w-full">
                     <div className="text-left">
-                      <CardTitle className="flex items-center gap-2">
-                        <Sparkles className="h-5 w-5 text-yellow-500" />
-                        Consejos de IA
+                      <CardTitle className="flex items-center gap-2 text-blue-800">
+                        <Sparkles className="h-5 w-5 text-blue-600" />
+                        💎 Oportunidades de Recompra (Amway)
                       </CardTitle>
-                      <CardDescription className="mt-1.5">Recomendaciones para este cliente.</CardDescription>
+                      <CardDescription className="mt-1.5 text-blue-600">
+                        Productos que este cliente necesita reponer pronto.
+                      </CardDescription>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
-                    <CardContent className="space-y-2 pt-0">
+                    <CardContent className="space-y-4 pt-0">
                       {insightsLoading ? (
                         <div className="space-y-2">
-                          <Skeleton className="h-12 w-full" />
-                          <Skeleton className="h-12 w-5/6" />
-                          <Skeleton className="h-12 w-full" />
+                          <Skeleton className="h-16 w-full" />
+                          <Skeleton className="h-16 w-full" />
                         </div>
                       ) : (
-                        insights && insights.length > 0 ? (
-                          <ul className="list-none space-y-2">
-                            {insights.map((insight, index) => {
-                              const emojiMatch = insight.match(/^(\p{Emoji})/u);
-                              const emoji = emojiMatch ? emojiMatch[0] : '💡';
-                              const text = emojiMatch ? insight.substring(emoji.length).trim() : insight;
-
-                              return (
-                                <li key={index} className="flex items-start gap-3 text-sm p-3 bg-muted/50 rounded-lg">
-                                  <span className="text-lg mt-0.5">{emoji}</span>
-                                  <span className="flex-1">{text}</span>
-                                </li>
-                              );
-                            })}
-                          </ul>
+                        refillOpportunities && refillOpportunities.length > 0 ? (
+                          <div className="grid gap-3">
+                            {refillOpportunities.map((opportunity, index) => (
+                              <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg border bg-white shadow-sm gap-4">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-lg">{opportunity.productName}</span>
+                                    <Badge variant={opportunity.urgency === 'HIGH' ? 'destructive' : 'secondary'}>
+                                      {opportunity.urgency === 'HIGH' ? '🔴 Urgente' : '🟡 Pronto'}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">
+                                    {opportunity.reason}
+                                  </p>
+                                </div>
+                                <Button
+                                  onClick={() => handleGenerateMessage(opportunity.productName)}
+                                  className="bg-green-600 hover:bg-green-700 text-white shrink-0"
+                                >
+                                  <MessageSquare className="w-4 h-4 mr-2" />
+                                  Generar Mensaje
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
                         ) : (
-                          <p className="text-sm text-muted-foreground text-center py-4">No hay suficientes datos para generar consejos.</p>
+                          <div className="text-center py-8 text-muted-foreground flex flex-col items-center gap-2">
+                            <CheckCircle2 className="w-8 h-8 text-green-500" />
+                            <p>¡Todo al día! No hay recompras pendientes por ahora.</p>
+                          </div>
                         )
                       )}
                     </CardContent>
@@ -1092,6 +1147,48 @@ export default function ClientDetailPage() {
           </Accordion>
         </div>
       </div>
+
+      <Dialog open={isMessageDialogOpen} onOpenChange={setIsMessageDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Mensaje Sugerido 💬</DialogTitle>
+            <DialogDescription>
+              IA redactó este borrador para ti. Edítalo o envíalo así.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {messageLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ) : (
+              <Textarea
+                value={messageDraft}
+                onChange={(e) => setMessageDraft(e.target.value)}
+                className="min-h-[150px] text-base"
+              />
+            )}
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setIsMessageDialogOpen(false)}>Cancelar</Button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button variant="secondary" onClick={() => copyToClipboard(messageDraft)} className="flex-1">
+                <Copy className="w-4 h-4 mr-2" />
+                Copiar
+              </Button>
+              <Button
+                className="flex-1 bg-green-600 hover:bg-green-700"
+                onClick={() => window.open(`https://wa.me/${client?.phone?.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(messageDraft)}`, '_blank')}
+              >
+                <Send className="w-4 h-4 mr-2" />
+                WhatsApp
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
 
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">

@@ -16,7 +16,7 @@ exports.counterService = {
      * @param userId - User ID to scope the counter
      * @param prefix - Optional prefix for the number (e.g., 'INV', 'QT')
      * @param padding - Number of digits to pad (default: 6)
-     * @returns Formatted number string (e.g., 'INV-000001')
+     * @return Formatted number string (e.g., 'INV-000001')
      */
     async getNextNumber(counterType, userId, prefix = '', padding = 6) {
         const counterRef = firebase_1.db.collection('counters').doc(`${userId}_${counterType}`);
@@ -34,7 +34,7 @@ exports.counterService = {
                     current: nextValue,
                     lastUpdated: new Date(),
                     userId: userId,
-                    type: counterType
+                    type: counterType,
                 }, { merge: true });
                 return nextValue;
             });
@@ -63,9 +63,9 @@ exports.counterService = {
                 current: startValue,
                 lastUpdated: new Date(),
                 userId: userId,
-                type: counterType
+                type: counterType,
             });
         }
-    }
+    },
 };
 //# sourceMappingURL=counterService.js.map

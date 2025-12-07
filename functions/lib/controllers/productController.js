@@ -16,34 +16,34 @@ const https_1 = require("firebase-functions/v2/https");
 const productService_1 = require("../services/productService");
 exports.createProduct = (0, https_1.onCall)({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "User must be logged in.");
+        throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
     return await productService_1.productService.createProduct(request.data, request.auth.uid);
 });
 exports.updateProduct = (0, https_1.onCall)({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "User must be logged in.");
+        throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
     const _a = request.data, { id } = _a, data = __rest(_a, ["id"]);
     return await productService_1.productService.updateProduct(id, data, request.auth.uid);
 });
 exports.deleteProduct = (0, https_1.onCall)({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "User must be logged in.");
+        throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
     const { id } = request.data;
     return await productService_1.productService.deleteProduct(id, request.auth.uid);
 });
 exports.checkProductCodeExists = (0, https_1.onCall)({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "User must be logged in.");
+        throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
     const { code, excludeId } = request.data;
     return await productService_1.productService.checkProductCodeExists(code, request.auth.uid, excludeId);
 });
 exports.batchCreateProducts = (0, https_1.onCall)({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "User must be logged in.");
+        throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
     const { products } = request.data;
     return await productService_1.productService.batchCreateProducts(products, request.auth.uid);

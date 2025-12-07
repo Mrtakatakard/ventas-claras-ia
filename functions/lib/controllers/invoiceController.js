@@ -17,7 +17,7 @@ const invoiceService = require("../services/invoiceService");
 const schema_1 = require("../schema");
 exports.createInvoice = (0, https_1.onCall)({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "User must be logged in.");
+        throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
     try {
         const data = schema_1.createInvoiceSchema.parse(request.data);
@@ -25,14 +25,14 @@ exports.createInvoice = (0, https_1.onCall)({ cors: true }, async (request) => {
     }
     catch (error) {
         if (error.issues) {
-            throw new https_1.HttpsError("invalid-argument", "Validation error", error.issues);
+            throw new https_1.HttpsError('invalid-argument', 'Validation error', error.issues);
         }
         throw error;
     }
 });
 exports.updateInvoice = (0, https_1.onCall)({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "User must be logged in.");
+        throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
     try {
         const _a = request.data, { id } = _a, data = __rest(_a, ["id"]);
@@ -44,26 +44,26 @@ exports.updateInvoice = (0, https_1.onCall)({ cors: true }, async (request) => {
     }
     catch (error) {
         if (error.issues) {
-            throw new https_1.HttpsError("invalid-argument", "Validation error", error.issues);
+            throw new https_1.HttpsError('invalid-argument', 'Validation error', error.issues);
         }
         throw error;
     }
 });
 exports.deleteInvoice = (0, https_1.onCall)({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "User must be logged in.");
+        throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
     return await invoiceService.deleteInvoice(request.data.id, request.auth.uid);
 });
 exports.getReceivables = (0, https_1.onCall)({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "User must be logged in.");
+        throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
     return await invoiceService.getReceivables(request.auth.uid);
 });
 exports.addPayment = (0, https_1.onCall)({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "User must be logged in.");
+        throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
     try {
         const validatedData = schema_1.addPaymentSchema.parse(request.data);
@@ -76,13 +76,13 @@ exports.addPayment = (0, https_1.onCall)({ cors: true }, async (request) => {
             paymentDate: paymentData.date,
             method: paymentData.method,
             note: paymentData.note,
-            imageUrl: paymentData.imageUrl
+            imageUrl: paymentData.imageUrl,
         };
         return await invoiceService.addPayment(invoiceId, servicePaymentData, request.auth.uid);
     }
     catch (error) {
         if (error.issues) {
-            throw new https_1.HttpsError("invalid-argument", "Validation error", error.issues);
+            throw new https_1.HttpsError('invalid-argument', 'Validation error', error.issues);
         }
         throw error;
     }

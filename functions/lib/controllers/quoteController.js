@@ -17,7 +17,7 @@ const quoteService_1 = require("../services/quoteService");
 const schema_1 = require("../schema");
 exports.createQuote = (0, https_1.onCall)({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "User must be logged in.");
+        throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
     try {
         const data = schema_1.createQuoteSchema.parse(request.data);
@@ -25,14 +25,14 @@ exports.createQuote = (0, https_1.onCall)({ cors: true }, async (request) => {
     }
     catch (error) {
         if (error.issues) {
-            throw new https_1.HttpsError("invalid-argument", "Validation error", error.issues);
+            throw new https_1.HttpsError('invalid-argument', 'Validation error', error.issues);
         }
         throw error;
     }
 });
 exports.updateQuote = (0, https_1.onCall)({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "User must be logged in.");
+        throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
     try {
         const _a = request.data, { id } = _a, data = __rest(_a, ["id"]);
@@ -42,20 +42,20 @@ exports.updateQuote = (0, https_1.onCall)({ cors: true }, async (request) => {
     }
     catch (error) {
         if (error.issues) {
-            throw new https_1.HttpsError("invalid-argument", "Validation error", error.issues);
+            throw new https_1.HttpsError('invalid-argument', 'Validation error', error.issues);
         }
         throw error;
     }
 });
 exports.deleteQuote = (0, https_1.onCall)({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "User must be logged in.");
+        throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
     return await quoteService_1.quoteService.deleteQuote(request.data.id, request.auth.uid);
 });
 exports.convertQuoteToInvoice = (0, https_1.onCall)({ cors: true }, async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "User must be logged in.");
+        throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
     return await quoteService_1.quoteService.convertQuoteToInvoice(request.data.quoteId, request.auth.uid);
 });

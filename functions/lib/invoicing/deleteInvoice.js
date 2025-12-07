@@ -10,11 +10,11 @@ const logger = require("firebase-functions/logger");
 const db = admin.firestore();
 exports.deleteInvoiceAndAdjustStock = (0, https_1.onCall)(async (request) => {
     if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "Debes estar autenticado para realizar esta acción.");
+        throw new https_1.HttpsError('unauthenticated', 'Debes estar autenticado para realizar esta acción.');
     }
     const { invoiceId } = request.data;
     if (!invoiceId) {
-        throw new https_1.HttpsError("invalid-argument", "Se requiere el ID de la factura.");
+        throw new https_1.HttpsError('invalid-argument', 'Se requiere el ID de la factura.');
     }
     const uid = request.auth.uid;
     const invoiceRef = db.collection('invoices').doc(invoiceId);
@@ -24,19 +24,19 @@ exports.deleteInvoiceAndAdjustStock = (0, https_1.onCall)(async (request) => {
             // 1. Read the invoice
             const invoiceDoc = await transaction.get(invoiceRef);
             if (!invoiceDoc.exists) {
-                throw new https_1.HttpsError("not-found", "La factura no existe.");
+                throw new https_1.HttpsError('not-found', 'La factura no existe.');
             }
             const invoice = invoiceDoc.data();
             if (!invoice) {
-                throw new https_1.HttpsError("data-loss", "No se encontraron datos en la factura.");
+                throw new https_1.HttpsError('data-loss', 'No se encontraron datos en la factura.');
             }
             // 2. Authorization check
             if (invoice.userId !== uid) {
-                throw new https_1.HttpsError("permission-denied", "No tienes permiso para eliminar esta factura.");
+                throw new https_1.HttpsError('permission-denied', 'No tienes permiso para eliminar esta factura.');
             }
             // 3. Validation: Can't delete if it has payments
             if (invoice.payments && invoice.payments.length > 0) {
-                throw new https_1.HttpsError("failed-precondition", "No se pueden eliminar facturas con pagos aplicados.");
+                throw new https_1.HttpsError('failed-precondition', 'No se pueden eliminar facturas con pagos aplicados.');
             }
             // 4. Adjust product stock for each item in the invoice
             if (invoice.items && invoice.items.length > 0) {
@@ -58,14 +58,14 @@ exports.deleteInvoiceAndAdjustStock = (0, https_1.onCall)(async (request) => {
             transaction.delete(invoiceRef);
         });
         logger.info(`Invoice ${invoiceId} deleted successfully by user ${uid}.`);
-        return { success: true, message: "Factura eliminada y stock ajustado correctamente." };
+        return { success: true, message: 'Factura eliminada y stock ajustado correctamente.' };
     }
     catch (error) {
         logger.error(`Error deleting invoice ${invoiceId}:`, error);
         if (error instanceof https_1.HttpsError) {
             throw error;
         }
-        throw new https_1.HttpsError("internal", "Ocurrió un error inesperado al eliminar la factura.");
+        throw new https_1.HttpsError('internal', 'Ocurrió un error inesperado al eliminar la factura.');
     }
 });
 //# sourceMappingURL=deleteInvoice.js.map
