@@ -62,8 +62,8 @@ export const updateDocument = async <T extends object>(
 ) => {
   const docRef = getDocRef(collectionName, id);
   // Sanitize data to remove undefined fields
-  const cleanData = Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== undefined));
-  await updateDoc(docRef, cleanData);
+  const cleanData = Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== undefined)) as Partial<T> | { [x: string]: any };
+  await updateDoc(docRef as any, cleanData as any);
 };
 
 export const deleteDocument = async (collectionName: string, id: string) => {
@@ -144,7 +144,7 @@ export const batchAddClients = async (clients: Omit<Client, 'id'>[], userId: str
 
 
 // Client Types
-export const addClientType = (data: Omit<ClientType, 'id' | 'createdAt' | 'isActive'>, userId: string) => addDocument<Omit<ClientType, 'id' | 'createdAt' | 'isActive'>>("clientTypes", data, userId);
+export const addClientType = (data: Omit<ClientType, 'id' | 'createdAt' | 'isActive' | 'userId'>, userId: string) => addDocument<Omit<ClientType, 'id' | 'createdAt' | 'isActive' | 'userId'>>("clientTypes", data, userId);
 
 export const getClientTypes = (userId: string) => getDocuments<ClientType>("clientTypes", userId);
 
@@ -165,7 +165,7 @@ export const deleteClientType = async (id: string) => {
 
 
 // Categories
-export const addCategory = (data: Omit<Category, 'id' | 'createdAt' | 'isActive'>, userId: string) => addDocument<Omit<Category, 'id' | 'createdAt' | 'isActive'>>("categories", data, userId);
+export const addCategory = (data: Omit<Category, 'id' | 'createdAt' | 'isActive' | 'userId'>, userId: string) => addDocument<Omit<Category, 'id' | 'createdAt' | 'isActive' | 'userId'>>("categories", data, userId);
 
 export const getCategories = (userId: string) => getDocuments<Category>("categories", userId);
 
@@ -262,6 +262,10 @@ export const deleteProduct = async (id: string) => {
 
 export const getQuotes = (userId: string) => getDocuments<Quote>("quotes", userId);
 export const getQuote = (id: string) => getDocument<Quote>("quotes", id);
+
+export const deleteQuote = async (id: string) => {
+  await deleteDocument("quotes", id);
+};
 
 export const getInvoices = (userId: string) => getDocuments<Invoice>("invoices", userId);
 export const getInvoice = (id: string) => getDocument<Invoice>("invoices", id);

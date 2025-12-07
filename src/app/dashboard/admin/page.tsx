@@ -48,7 +48,7 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export default function AdminDashboardPage() {
-  const { role, loading: authLoading } = useAuth();
+  const { role, loading: authLoading, userId } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [team, setTeam] = useState<UserProfile[]>([]);
@@ -60,8 +60,8 @@ export default function AdminDashboardPage() {
     }
 
     if (role !== 'admin' && role !== 'superAdmin') {
-        setDataLoading(false);
-        return;
+      setDataLoading(false);
+      return;
     };
 
     const fetchData = async () => {
@@ -70,7 +70,7 @@ export default function AdminDashboardPage() {
         const [invoicesData, clientsData, teamData] = await Promise.all([
           getAllInvoicesForAdmin(),
           getAllClientsForAdmin(),
-          getTeamMembers(),
+          userId ? getTeamMembers(userId) : Promise.resolve([]),
         ]);
         setInvoices(invoicesData);
         setClients(clientsData);
@@ -91,11 +91,11 @@ export default function AdminDashboardPage() {
 
   const dashboardData = useMemo(() => {
     if (dataLoading) return null;
-    
+
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
-    
+
     // DOP Calculations
     const dopInvoices = invoices.filter(inv => (inv.currency || 'DOP') === 'DOP');
     const totalSalesDOP = dopInvoices.reduce((sum, inv) => sum + inv.total, 0);
@@ -124,57 +124,57 @@ export default function AdminDashboardPage() {
 
     const totalClientsCount = clients.length;
     const totalUsersCount = team.length;
-    
+
     const userSalesDOPThisMonth = new Map<string, number>();
     invoices
-        .filter(inv => {
-            const [year, month] = inv.issueDate.split('-').map(Number);
-            return year === currentYear && month - 1 === currentMonth && (inv.currency || 'DOP') === 'DOP';
-        })
-        .forEach(inv => {
-            if (inv.userId) {
-              const currentSales = userSalesDOPThisMonth.get(inv.userId) || 0;
-              userSalesDOPThisMonth.set(inv.userId, currentSales + inv.total);
-            }
-        });
-    
+      .filter(inv => {
+        const [year, month] = inv.issueDate.split('-').map(Number);
+        return year === currentYear && month - 1 === currentMonth && (inv.currency || 'DOP') === 'DOP';
+      })
+      .forEach(inv => {
+        if (inv.userId) {
+          const currentSales = userSalesDOPThisMonth.get(inv.userId) || 0;
+          userSalesDOPThisMonth.set(inv.userId, currentSales + inv.total);
+        }
+      });
+
     const allUserSales = team.map(user => ({
-        id: user.id,
-        name: user.name || 'Usuario Desconocido',
-        email: user.email || '',
-        totalSold: userSalesDOPThisMonth.get(user.id) || 0,
+      id: user.id,
+      name: user.name || 'Usuario Desconocido',
+      email: user.email || '',
+      totalSold: userSalesDOPThisMonth.get(user.id) || 0,
     }));
 
     const topSalespeopleThisMonth = [...allUserSales]
-        .sort((a, b) => b.totalSold - a.totalSold)
-        .slice(0, 5);
+      .sort((a, b) => b.totalSold - a.totalSold)
+      .slice(0, 5);
 
     const bottomSalespeopleThisMonth = [...allUserSales]
-        .sort((a, b) => a.totalSold - b.totalSold)
-        .slice(0, 5);
+      .sort((a, b) => a.totalSold - b.totalSold)
+      .slice(0, 5);
 
     const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    const chartDataMonths = [];
+    const chartDataMonths: any[] = [];
     for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        chartDataMonths.push({
-            monthLabel: `${monthNames[d.getMonth()]} '${d.getFullYear().toString().slice(-2)}`,
-            month: d.getMonth(),
-            year: d.getFullYear(),
-            total: 0,
-        });
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      chartDataMonths.push({
+        monthLabel: `${monthNames[d.getMonth()]} '${d.getFullYear().toString().slice(-2)}`,
+        month: d.getMonth(),
+        year: d.getFullYear(),
+        total: 0,
+      });
     }
 
     dopInvoices.forEach(invoice => {
-        const [year, month] = invoice.issueDate.split('-').map(Number);
-        const invoiceMonth = month - 1;
-        const invoiceYear = year;
-        
-        const monthBucket = chartDataMonths.find(m => m.month === invoiceMonth && m.year === invoiceYear);
+      const [year, month] = invoice.issueDate.split('-').map(Number);
+      const invoiceMonth = month - 1;
+      const invoiceYear = year;
 
-        if (monthBucket) {
-            monthBucket.total += invoice.total;
-        }
+      const monthBucket = chartDataMonths.find(m => m.month === invoiceMonth && m.year === invoiceYear);
+
+      if (monthBucket) {
+        monthBucket.total += invoice.total;
+      }
     });
 
     return {
@@ -196,48 +196,48 @@ export default function AdminDashboardPage() {
 
   if (pageLoading) {
     return (
-        <>
-            <PageHeader title="Panel del Administrador" description="Un resumen de la actividad de ventas de toda la plataforma." />
-            <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-                {Array.from({length: 8}).map((_, i) => (
-                    <Card key={i}><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><Skeleton className="h-5 w-32" /></CardHeader><CardContent><Skeleton className="h-8 w-24" /><Skeleton className="h-4 w-40 mt-1" /></CardContent></Card>
-                ))}
-            </div>
-             <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
-                <Card>
-                    <CardHeader>
-                        <CardTitle><Skeleton className="h-6 w-1/2"/></CardTitle>
-                        <CardDescription><Skeleton className="h-4 w-3/4"/></CardDescription>
-                    </CardHeader>
-                    <CardContent><Skeleton className="h-[300px] w-full" /></CardContent>
-                </Card>
-                <div className="flex flex-col gap-4 md:gap-8">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle><Skeleton className="h-6 w-2/3"/></CardTitle>
-                            <CardDescription><Skeleton className="h-4 w-full"/></CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid gap-8">
-                            {Array.from({length: 3}).map((_, i) => (<div key={i} className="flex items-center gap-4"><Skeleton className="h-9 w-9 rounded-full" /><div className="grid gap-1 flex-1"><Skeleton className="h-4 w-32" /><Skeleton className="h-4 w-40" /></div><Skeleton className="h-5 w-20" /></div>))}
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle><Skeleton className="h-6 w-3/4"/></CardTitle>
-                            <CardDescription><Skeleton className="h-4 w-full"/></CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid gap-8">
-                            {Array.from({length: 3}).map((_, i) => (<div key={i} className="flex items-center gap-4"><Skeleton className="h-9 w-9 rounded-full" /><div className="grid gap-1 flex-1"><Skeleton className="h-4 w-32" /><Skeleton className="h-4 w-40" /></div><Skeleton className="h-5 w-20" /></div>))}
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
-        </>
+      <>
+        <PageHeader title="Panel del Administrador" description="Un resumen de la actividad de ventas de toda la plataforma." />
+        <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Card key={i}><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><Skeleton className="h-5 w-32" /></CardHeader><CardContent><Skeleton className="h-8 w-24" /><Skeleton className="h-4 w-40 mt-1" /></CardContent></Card>
+          ))}
+        </div>
+        <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle><Skeleton className="h-6 w-1/2" /></CardTitle>
+              <CardDescription><Skeleton className="h-4 w-3/4" /></CardDescription>
+            </CardHeader>
+            <CardContent><Skeleton className="h-[300px] w-full" /></CardContent>
+          </Card>
+          <div className="flex flex-col gap-4 md:gap-8">
+            <Card>
+              <CardHeader>
+                <CardTitle><Skeleton className="h-6 w-2/3" /></CardTitle>
+                <CardDescription><Skeleton className="h-4 w-full" /></CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-8">
+                {Array.from({ length: 3 }).map((_, i) => (<div key={i} className="flex items-center gap-4"><Skeleton className="h-9 w-9 rounded-full" /><div className="grid gap-1 flex-1"><Skeleton className="h-4 w-32" /><Skeleton className="h-4 w-40" /></div><Skeleton className="h-5 w-20" /></div>))}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle><Skeleton className="h-6 w-3/4" /></CardTitle>
+                <CardDescription><Skeleton className="h-4 w-full" /></CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-8">
+                {Array.from({ length: 3 }).map((_, i) => (<div key={i} className="flex items-center gap-4"><Skeleton className="h-9 w-9 rounded-full" /><div className="grid gap-1 flex-1"><Skeleton className="h-4 w-32" /><Skeleton className="h-4 w-40" /></div><Skeleton className="h-5 w-20" /></div>))}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </>
     )
   }
-  
+
   if (role !== 'admin' && role !== 'superAdmin') {
-      return null;
+    return null;
   }
 
   return (
@@ -247,10 +247,10 @@ export default function AdminDashboardPage() {
         description="Un resumen de la actividad de ventas de toda la plataforma."
       >
         <Button asChild variant="outline" size="sm">
-            <Link href="https://console.firebase.google.com/project/ventas-claras/analytics/events" target="_blank">
-                <ExternalLink className="h-4 w-4" />
-                <span className="ml-2 hidden sm:inline">Ver Analíticas</span>
-            </Link>
+          <Link href="https://console.firebase.google.com/project/ventas-claras/analytics/events" target="_blank">
+            <ExternalLink className="h-4 w-4" />
+            <span className="ml-2 hidden sm:inline">Ver Analíticas</span>
+          </Link>
         </Button>
       </PageHeader>
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
@@ -263,7 +263,7 @@ export default function AdminDashboardPage() {
             <div className="text-2xl font-bold">{formatCurrency(dashboardData?.salesThisMonthDOP || 0, 'DOP')}</div>
           </CardContent>
         </Card>
-         <Card>
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ventas del Mes (USD)</CardTitle>
             <CreditCard className="h-4 w-4 text-muted-foreground" />
@@ -290,7 +290,7 @@ export default function AdminDashboardPage() {
             <div className="text-2xl font-bold text-destructive">{formatCurrency(dashboardData?.pendingBalanceUSD || 0, 'USD')}</div>
           </CardContent>
         </Card>
-         <Card>
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Ventas Totales (DOP)
@@ -336,13 +336,13 @@ export default function AdminDashboardPage() {
           <CardHeader>
             <CardTitle>Ventas Recientes (Plataforma)</CardTitle>
             <CardDescription>
-               Un resumen de las ventas en DOP de los últimos 6 meses en toda la plataforma.
+              Un resumen de las ventas en DOP de los últimos 6 meses en toda la plataforma.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dashboardData?.chartData}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dashboardData?.chartData}>
                   <CartesianGrid vertical={false} />
                   <XAxis
                     dataKey="monthLabel"
@@ -367,75 +367,75 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
         <div className="flex flex-col gap-4 md:gap-8">
-            <Card>
+          <Card>
             <CardHeader className="flex flex-row items-center">
-                <div className="grid gap-2">
+              <div className="grid gap-2">
                 <CardTitle>Top Vendedores del Mes</CardTitle>
                 <CardDescription>
-                    Usuarios que generaron más ventas (DOP) este mes.
+                  Usuarios que generaron más ventas (DOP) este mes.
                 </CardDescription>
-                </div>
-                <Button asChild size="sm" className="ml-auto gap-1">
+              </div>
+              <Button asChild size="sm" className="ml-auto gap-1">
                 <Link href="/dashboard/team">
-                    Ver Equipo
-                    <ArrowUpRight className="h-4 w-4" />
+                  Ver Equipo
+                  <ArrowUpRight className="h-4 w-4" />
                 </Link>
-                </Button>
+              </Button>
             </CardHeader>
             <CardContent className="grid gap-8">
-                {dashboardData?.topSalespeopleThisMonth && dashboardData.topSalespeopleThisMonth.length > 0 ? (
+              {dashboardData?.topSalespeopleThisMonth && dashboardData.topSalespeopleThisMonth.length > 0 ? (
                 dashboardData.topSalespeopleThisMonth.map(user => (
-                    <div key={user.id} className="flex items-center gap-4">
+                  <div key={user.id} className="flex items-center gap-4">
                     <Avatar className="hidden h-9 w-9 sm:flex">
-                        <AvatarImage src={`https://placehold.co/40x40.png`} alt="Avatar" data-ai-hint="person portrait" />
-                        <AvatarFallback>{user.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                      <AvatarImage src={`https://placehold.co/40x40.png`} alt="Avatar" data-ai-hint="person portrait" />
+                      <AvatarFallback>{user.name?.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="grid gap-1 flex-1 min-w-0">
-                        <p className="text-sm font-medium leading-none truncate">{user.name}</p>
-                        <p className="text-sm text-muted-foreground truncate">
+                      <p className="text-sm font-medium leading-none truncate">{user.name}</p>
+                      <p className="text-sm text-muted-foreground truncate">
                         {user.email}
-                        </p>
+                      </p>
                     </div>
                     <div className="ml-auto font-medium">{formatCurrency(user.totalSold, 'DOP')}</div>
-                    </div>
+                  </div>
                 ))
-                ) : (
+              ) : (
                 <div className="text-center text-sm text-muted-foreground py-8">No hay ventas en DOP este mes.</div>
-                )}
+              )}
             </CardContent>
-            </Card>
+          </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center">
-                <div className="grid gap-2">
-                  <CardTitle>Vendedores con Menor Actividad</CardTitle>
-                  <CardDescription>
-                    Usuarios con menos ventas (DOP) este mes.
-                  </CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="grid gap-8">
-                {dashboardData?.bottomSalespeopleThisMonth && dashboardData.bottomSalespeopleThisMonth.length > 0 ? (
-                  dashboardData.bottomSalespeopleThisMonth.map(user => (
-                    <div key={user.id} className="flex items-center gap-4">
-                      <Avatar className="hidden h-9 w-9 sm:flex">
-                        <AvatarImage src={`https://placehold.co/40x40.png`} alt="Avatar" data-ai-hint="person portrait" />
-                        <AvatarFallback><UserX className="h-4 w-4 text-muted-foreground" /></AvatarFallback>
-                      </Avatar>
-                      <div className="grid gap-1 flex-1 min-w-0">
-                        <p className="text-sm font-medium leading-none truncate">{user.name}</p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {user.email}
-                        </p>
-                      </div>
-                      <div className="ml-auto font-medium text-muted-foreground">{formatCurrency(user.totalSold, 'DOP')}</div>
+          <Card>
+            <CardHeader className="flex flex-row items-center">
+              <div className="grid gap-2">
+                <CardTitle>Vendedores con Menor Actividad</CardTitle>
+                <CardDescription>
+                  Usuarios con menos ventas (DOP) este mes.
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-8">
+              {dashboardData?.bottomSalespeopleThisMonth && dashboardData.bottomSalespeopleThisMonth.length > 0 ? (
+                dashboardData.bottomSalespeopleThisMonth.map(user => (
+                  <div key={user.id} className="flex items-center gap-4">
+                    <Avatar className="hidden h-9 w-9 sm:flex">
+                      <AvatarImage src={`https://placehold.co/40x40.png`} alt="Avatar" data-ai-hint="person portrait" />
+                      <AvatarFallback><UserX className="h-4 w-4 text-muted-foreground" /></AvatarFallback>
+                    </Avatar>
+                    <div className="grid gap-1 flex-1 min-w-0">
+                      <p className="text-sm font-medium leading-none truncate">{user.name}</p>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {user.email}
+                      </p>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center text-sm text-muted-foreground py-8">Todos los vendedores tuvieron actividad este mes.</div>
-                )}
-              </CardContent>
-            </Card>
+                    <div className="ml-auto font-medium text-muted-foreground">{formatCurrency(user.totalSold, 'DOP')}</div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-sm text-muted-foreground py-8">Todos los vendedores tuvieron actividad este mes.</div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </>

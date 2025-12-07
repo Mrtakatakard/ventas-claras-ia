@@ -29,7 +29,9 @@ import { AddPaymentForm } from "@/components/add-payment-form"
 
 type SortKey = keyof Invoice;
 
-export default function AccountsReceivablePage() {
+import { Suspense } from 'react';
+
+function AccountsReceivableContent() {
   const { userId } = useAuth();
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -45,7 +47,7 @@ export default function AccountsReceivablePage() {
   useEffect(() => {
     const clientNameFromQuery = searchParams.get('clientName');
     if (clientNameFromQuery) {
-        setFilter(clientNameFromQuery);
+      setFilter(clientNameFromQuery);
     }
   }, [searchParams]);
 
@@ -57,8 +59,8 @@ export default function AccountsReceivablePage() {
       const receivableInvoices = await getAccountsReceivableFromFunction();
       setInvoices(receivableInvoices);
     } catch (error: any) {
-       console.error("Error fetching accounts receivable:", error);
-       toast({ title: "Error", description: error.message || "No se pudieron cargar las cuentas por cobrar.", variant: "destructive" });
+      console.error("Error fetching accounts receivable:", error);
+      toast({ title: "Error", description: error.message || "No se pudieron cargar las cuentas por cobrar.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -69,12 +71,12 @@ export default function AccountsReceivablePage() {
       fetchInvoices();
     }
   }, [userId, fetchInvoices]);
-  
+
   const handleOpenPaymentDialog = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setIsPaymentDialogOpen(true);
   };
-  
+
   const handlePaymentSuccess = () => {
     setIsPaymentDialogOpen(false);
     setSelectedInvoice(null);
@@ -100,7 +102,7 @@ export default function AccountsReceivablePage() {
       default: return "outline";
     }
   }
-  
+
   const handleSort = (key: SortKey) => {
     let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -122,40 +124,40 @@ export default function AccountsReceivablePage() {
     );
 
     if (sortConfig.key) {
-        sortableItems.sort((a, b) => {
-            const aValue = a[sortConfig.key];
-            const bValue = b[sortConfig.key];
-            
-            let comparison = 0;
-            if (sortConfig.key === 'issueDate' || sortConfig.key === 'dueDate' || sortConfig.key === 'createdAt') {
-                const dateA = aValue ? new Date(aValue as any).getTime() : 0;
-                const dateB = bValue ? new Date(bValue as any).getTime() : 0;
-                comparison = dateA - dateB;
-            } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-                comparison = aValue - bValue;
-            } else {
-                comparison = String(aValue).localeCompare(String(bValue));
-            }
-            
-            return sortConfig.direction === 'asc' ? comparison : -comparison;
-        });
+      sortableItems.sort((a, b) => {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+
+        let comparison = 0;
+        if (sortConfig.key === 'issueDate' || sortConfig.key === 'dueDate' || sortConfig.key === 'createdAt') {
+          const dateA = aValue ? new Date(aValue as any).getTime() : 0;
+          const dateB = bValue ? new Date(bValue as any).getTime() : 0;
+          comparison = dateA - dateB;
+        } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+          comparison = aValue - bValue;
+        } else {
+          comparison = String(aValue).localeCompare(String(bValue));
+        }
+
+        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      });
     }
 
     const totalDOP = invoices
       .filter(inv => inv.currency === 'DOP' || !inv.currency)
       .reduce((sum, inv) => sum + inv.balanceDue, 0);
-    
+
     const totalUSD = invoices
       .filter(inv => inv.currency === 'USD')
       .reduce((sum, inv) => sum + inv.balanceDue, 0);
 
-    return { 
-        sortedInvoices: sortableItems, 
-        totalReceivableDOP: totalDOP,
-        totalReceivableUSD: totalUSD
+    return {
+      sortedInvoices: sortableItems,
+      totalReceivableDOP: totalDOP,
+      totalReceivableUSD: totalUSD
     };
   }, [invoices, filter, sortConfig]);
-  
+
   const { paginatedInvoices, totalPages } = useMemo(() => {
     const startIndex = (currentPage - 1) * rowsPerPage;
     const endIndex = startIndex + rowsPerPage;
@@ -172,15 +174,15 @@ export default function AccountsReceivablePage() {
 
 
   if (loading) {
-     return (
-        <>
-            <PageHeader title="Cuentas por Cobrar" description="Facturas pendientes de pago." />
-            <div className="grid gap-4 md:grid-cols-2">
-                <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><Skeleton className="h-5 w-40" /></CardHeader><CardContent><Skeleton className="h-8 w-24" /></CardContent></Card>
-                <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><Skeleton className="h-5 w-40" /></CardHeader><CardContent><Skeleton className="h-8 w-24" /></CardContent></Card>
-            </div>
-            <Card className="mt-4"><CardContent className="pt-6"><Skeleton className="h-[300px] w-full" /></CardContent></Card>
-        </>
+    return (
+      <>
+        <PageHeader title="Cuentas por Cobrar" description="Facturas pendientes de pago." />
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><Skeleton className="h-5 w-40" /></CardHeader><CardContent><Skeleton className="h-8 w-24" /></CardContent></Card>
+          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><Skeleton className="h-5 w-40" /></CardHeader><CardContent><Skeleton className="h-8 w-24" /></CardContent></Card>
+        </div>
+        <Card className="mt-4"><CardContent className="pt-6"><Skeleton className="h-[300px] w-full" /></CardContent></Card>
+      </>
     )
   }
 
@@ -232,34 +234,34 @@ export default function AccountsReceivablePage() {
             <TableHeader>
               <TableRow>
                 <TableHead>
-                   <Button variant="ghost" onClick={() => handleSort('invoiceNumber')} className="-ml-4">
-                      Factura #
-                      {sortConfig.key === 'invoiceNumber' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
+                  <Button variant="ghost" onClick={() => handleSort('invoiceNumber')} className="-ml-4">
+                    Factura #
+                    {sortConfig.key === 'invoiceNumber' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                  </Button>
                 </TableHead>
                 <TableHead>
-                   <Button variant="ghost" onClick={() => handleSort('clientName')} className="-ml-4">
-                      Cliente
-                      {sortConfig.key === 'clientName' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
+                  <Button variant="ghost" onClick={() => handleSort('clientName')} className="-ml-4">
+                    Cliente
+                    {sortConfig.key === 'clientName' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                  </Button>
                 </TableHead>
                 <TableHead className="hidden md:table-cell">
-                   <Button variant="ghost" onClick={() => handleSort('dueDate')} className="-ml-4">
-                      Fecha Venc.
-                      {sortConfig.key === 'dueDate' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
+                  <Button variant="ghost" onClick={() => handleSort('dueDate')} className="-ml-4">
+                    Fecha Venc.
+                    {sortConfig.key === 'dueDate' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                  </Button>
                 </TableHead>
                 <TableHead className="text-right">
-                   <Button variant="ghost" onClick={() => handleSort('balanceDue')} className="ml-auto -mr-4 flex">
-                      Balance Pend.
-                      {sortConfig.key === 'balanceDue' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
+                  <Button variant="ghost" onClick={() => handleSort('balanceDue')} className="ml-auto -mr-4 flex">
+                    Balance Pend.
+                    {sortConfig.key === 'balanceDue' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                  </Button>
                 </TableHead>
                 <TableHead className="hidden sm:table-cell">
                   <Button variant="ghost" onClick={() => handleSort('status')} className="-ml-4">
-                      Estado
-                      {sortConfig.key === 'status' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
+                    Estado
+                    {sortConfig.key === 'status' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                  </Button>
                 </TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -286,10 +288,10 @@ export default function AccountsReceivablePage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                           <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/invoices/${invoice.id}`}><Eye className="mr-2 h-4 w-4"/>Ver Detalles</Link>
+                            <Link href={`/dashboard/invoices/${invoice.id}`}><Eye className="mr-2 h-4 w-4" />Ver Detalles</Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleOpenPaymentDialog(invoice)}>
-                             <CreditCard className="mr-2 h-4 w-4"/>Realizar Pago
+                            <CreditCard className="mr-2 h-4 w-4" />Realizar Pago
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -299,7 +301,7 @@ export default function AccountsReceivablePage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center h-24">
-                     ¡Felicidades! No tienes cuentas por cobrar.
+                    ¡Felicidades! No tienes cuentas por cobrar.
                   </TableCell>
                 </TableRow>
               )}
@@ -377,25 +379,33 @@ export default function AccountsReceivablePage() {
         </CardContent>
       </Card>
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                  <DialogTitle>Registrar Nuevo Pago</DialogTitle>
-                  <DialogDescription>
-                      {selectedInvoice 
-                          ? `Ingresa los detalles del pago para la factura ${selectedInvoice.invoiceNumber}.` 
-                          : ""
-                      }
-                  </DialogDescription>
-              </DialogHeader>
-              {selectedInvoice && (
-                  <AddPaymentForm 
-                      invoice={selectedInvoice}
-                      onSuccess={handlePaymentSuccess}
-                      onCancel={() => setIsPaymentDialogOpen(false)}
-                  />
-              )}
-          </DialogContent>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Registrar Nuevo Pago</DialogTitle>
+            <DialogDescription>
+              {selectedInvoice
+                ? `Ingresa los detalles del pago para la factura ${selectedInvoice.invoiceNumber}.`
+                : ""
+              }
+            </DialogDescription>
+          </DialogHeader>
+          {selectedInvoice && (
+            <AddPaymentForm
+              invoice={selectedInvoice}
+              onSuccess={handlePaymentSuccess}
+              onCancel={() => setIsPaymentDialogOpen(false)}
+            />
+          )}
+        </DialogContent>
       </Dialog>
     </>
   )
+}
+
+export default function AccountsReceivablePage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
+      <AccountsReceivableContent />
+    </Suspense>
+  );
 }

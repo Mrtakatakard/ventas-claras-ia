@@ -155,7 +155,7 @@ export default function EditQuotePage() {
             const product = products.find((p) => p.id === item.productId);
             if (!product) return;
 
-            const itemPrice = product.price;
+            const itemPrice = product.price || 0;
             const itemTotal = itemPrice * item.quantity;
             const itemDiscountAmount = itemTotal * (item.discount / 100);
             const itemNetTotal = itemTotal - itemDiscountAmount;
@@ -256,7 +256,7 @@ export default function EditQuotePage() {
 
         const quoteItems: InvoiceItem[] = finalItemsState.map(item => {
             const product = products.find(p => p.id === item.productId)!;
-            const unitPrice = product.price;
+            const unitPrice = product.price || 0;
             const discountAmount = unitPrice * ((item.discount || 0) / 100);
 
             const newItem: InvoiceItem = {
@@ -287,7 +287,7 @@ export default function EditQuotePage() {
             const product = products.find((p) => p.id === item.productId);
             if (!product) return;
 
-            const itemPrice = product.price;
+            const itemPrice = product.price || 0;
             const itemTotal = itemPrice * item.quantity;
             const itemDiscountAmount = itemTotal * ((item.discount || 0) / 100);
             const itemNetTotal = itemTotal - itemDiscountAmount;
@@ -389,7 +389,7 @@ export default function EditQuotePage() {
                                         <TableBody>
                                             {items.map(item => {
                                                 const product = availableProducts.find(p => p.id === item.productId);
-                                                const itemTotal = product ? product.price * item.quantity : 0;
+                                                const itemTotal = product ? (product.price || 0) * item.quantity : 0;
                                                 const itemDiscount = itemTotal * (item.discount / 100);
                                                 const finalTotal = itemTotal - itemDiscount;
 
@@ -417,7 +417,7 @@ export default function EditQuotePage() {
                                                             </TableCell>
                                                         )}
                                                         <TableCell><Input type="number" min="0" max="100" value={item.discount} onChange={(e) => handleItemChange(item.id, 'discount', e.target.value)} /></TableCell>
-                                                        <TableCell className="text-right">{product ? formatCurrency(product.price, quoteCurrency) : "-"}</TableCell>
+                                                        <TableCell className="text-right">{product ? formatCurrency(product.price || 0, quoteCurrency) : "-"}</TableCell>
                                                         <TableCell className="text-right font-medium">{formatCurrency(finalTotal, quoteCurrency)}</TableCell>
                                                         <TableCell><Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)} disabled={items.length <= 1}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                                                     </TableRow>

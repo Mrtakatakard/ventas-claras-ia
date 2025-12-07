@@ -36,7 +36,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 type SortKey = keyof Client;
 
-export default function ClientsPage() {
+import { Suspense } from 'react';
+
+function ClientsContent() {
   const searchParams = useSearchParams();
   const { userId } = useAuth();
   const { toast } = useToast();
@@ -475,4 +477,12 @@ export default function ClientsPage() {
       </Card>
     </>
   )
+}
+
+export default function ClientsPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
+      <ClientsContent />
+    </Suspense>
+  );
 }

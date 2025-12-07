@@ -3,42 +3,105 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to check if user is authenticated
+    // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Clients: Read-only for frontend (writes MUST go through Cloud Functions)
-    match /clients/{client} {
-      allow read: if isAuthenticated();
-      allow write: if false; // Block direct writes
+    function isAdmin() {
+       return isAuthenticated() && 
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superAdmin']);
     }
 
-    // Other collections: Allow read/write for authenticated users (Migration Phase)
-    // Once migrated to Cloud Functions, these should also be restricted.
-    match /clientTypes/{doc} { allow read, write: if isAuthenticated(); }
-    match /categories/{doc} { allow read, write: if isAuthenticated(); }
-    match /products/{document} {
-      allow read: if isAuthenticated();
-      allow write: if false; // Only allow writes via Cloud Functions
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
-    match /productBatches/{doc} { allow read, write: if isAuthenticated(); }
-    match /invoices/{doc} { allow read, write: if isAuthenticated(); }
-    match /quotes/{doc} { allow read, write: if isAuthenticated(); }
-    match /invoices/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if false;
+
+    function isDocOwner() {
+      return isAuthenticated() && resource.data.userId == request.auth.uid;
     }
-    match /quotes/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if false;
-    }
-    match /payments/{doc} { allow read, write: if isAuthenticated(); }
-    match /users/{doc} { allow read, write: if isAuthenticated(); }
-    match /counters/{doc} { allow read, write: if isAuthenticated(); } // For invoice numbers etc.
     
-    // Default fallback (block everything else to be safe, or allow for dev?)
-    // For now, let's be explicit about what we allow above. 
-    // Anything not matched is denied by default in Firestore rules.
+    function isValidCreate() {
+      return isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    function isValidUpdate() {
+      return isDocOwner() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Users: Users manage their own profile; Admins can manage all.
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) || isAdmin();
+    }
+
+    // Data Collections: Strict Owner/Admin access
+    match /clients/{docId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isValidCreate();
+      allow update: if isValidUpdate();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /clientTypes/{docId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isValidCreate();
+      allow update: if isValidUpdate();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /categories/{docId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isValidCreate();
+      allow update: if isValidUpdate();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /products/{docId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isValidCreate();
+      allow update: if isValidUpdate();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+    
+    // Legacy support if used, though Batches are likely inside Products now
+    match /productBatches/{docId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isValidCreate();
+      allow update: if isValidUpdate();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /invoices/{docId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isValidCreate();
+      allow update: if isValidUpdate();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /quotes/{docId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isValidCreate();
+      allow update: if isValidUpdate();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /payments/{docId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isValidCreate();
+      allow update: if isValidUpdate();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+    
+    // Counters: Read-only for clients, assuming backend management or pre-seeded
+    match /counters/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only backend admin SDK can write
+    }
+    
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }

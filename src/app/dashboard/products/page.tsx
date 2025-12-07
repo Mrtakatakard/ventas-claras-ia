@@ -192,9 +192,9 @@ export default function ProductsPage() {
           'Descripción': p.description,
           'Imagen URL': p.imageUrl,
           'Lote #': 'N/A',
-          'Costo': 'N/A',
-          'Precio': 'N/A',
-          'Stock': 'N/A',
+          'Costo': 0,
+          'Precio': 0,
+          'Stock': 0,
           'Expiración': 'N/A',
         }];
       }
@@ -209,7 +209,7 @@ export default function ProductsPage() {
         'Descripción': p.description,
         'Imagen URL': p.imageUrl,
         'Lote #': `Lote ${index + 1}`,
-        'Costo': batch.cost,
+        'Costo': p.cost || 0,
         'Precio': batch.price,
         'Stock': batch.stock,
         'Expiración': batch.expirationDate,

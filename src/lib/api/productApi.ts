@@ -3,7 +3,7 @@ import { httpsCallable } from "firebase/functions";
 import { Product } from "../types";
 
 export const productApi = {
-    create: async (data: Omit<Product, 'id' | 'createdAt' | 'isActive'>) => {
+    create: async (data: Omit<Product, 'id' | 'createdAt' | 'isActive' | 'userId'>) => {
         const createProduct = httpsCallable(functions, "createProduct");
         const result = await createProduct(data);
         return result.data as string; // Returns the new product ID
@@ -25,7 +25,7 @@ export const productApi = {
         return result.data as boolean;
     },
 
-    batchCreate: async (products: Omit<Product, 'id' | 'createdAt' | 'isActive'>[]) => {
+    batchCreate: async (products: Omit<Product, 'id' | 'createdAt' | 'isActive' | 'userId'>[]) => {
         const batchCreateProducts = httpsCallable(functions, "batchCreateProducts");
         await batchCreateProducts({ products });
     }

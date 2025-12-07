@@ -321,7 +321,7 @@ export function ImportProductsDialog({
         <DialogHeader>
           <DialogTitle>Revisar Productos a Importar</DialogTitle>
           <DialogDescription>
-            Verifica y edita los productos cargados. El sistema agrupa productos por el mismo 'Código'.
+            Verifica y edita los productos cargados. El sistema agrupa productos por el mismo &apos;Código&apos;.
           </DialogDescription>
         </DialogHeader>
 

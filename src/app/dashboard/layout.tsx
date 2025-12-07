@@ -1,4 +1,4 @@
- "use client"
+"use client"
 
 import Link from "next/link"
 import {
@@ -94,7 +94,7 @@ export default function DashboardLayout({
   const [viewAsAdmin, setViewAsAdmin] = useState(true);
 
   const isActualAdmin = role === 'admin' || role === 'superAdmin';
-  
+
   // Determine which navigation items to show
   // If user is an admin, the view can be toggled. Otherwise, it's always user view.
   const navItems = isActualAdmin && viewAsAdmin ? adminNavItems : userNavItems;
@@ -105,7 +105,7 @@ export default function DashboardLayout({
     }
     // If the user is not an admin, ensure they are not seeing the admin view.
     if (!isActualAdmin) {
-        setViewAsAdmin(false);
+      setViewAsAdmin(false);
     }
   }, [user, loading, router, isActualAdmin]);
 
@@ -114,9 +114,12 @@ export default function DashboardLayout({
       if (!userId) return;
       try {
         const products = await getProducts(userId);
-        const lowStock = products.filter(p => p.stock <= (p.notificationThreshold ?? 10));
+        const lowStock = products.filter(p => {
+          const stock = p.batches?.reduce((acc, b) => acc + b.stock, 0) || 0;
+          return stock <= (p.notificationThreshold ?? 10);
+        });
         setLowStockProducts(lowStock);
-        
+
         const invoices = await getInvoices(userId)
         const productsMap = new Map(products.map(p => [p.id, p]));
         const today = new Date();
@@ -126,40 +129,40 @@ export default function DashboardLayout({
         sevenDaysFromNow.setDate(today.getDate() + 7);
 
         const upcoming: { clientName: string; clientId: string; productName: string; restockDate: string; }[] = [];
-        
-        invoices.forEach(invoice => {
-            if (invoice.items) {
-                invoice.items.forEach(item => {
-                    if (item.followUpStatus === 'pendiente') {
-                         const product = productsMap.get(item.productId);
-                         let restockDate = '';
-                         if (product?.restockTimeDays && product.restockTimeDays > 0) {
-                             const numberOfPeople = item.numberOfPeople || 1;
-                             const quantity = item.quantity || 1;
-                             if (numberOfPeople > 0) {
-                                 const durationInDays = Math.floor((product.restockTimeDays * quantity) / numberOfPeople);
-                                 const [year, month, day] = invoice.issueDate.split('-').map(Number);
-                                 const utcSaleDate = new Date(Date.UTC(year, month - 1, day));
-                                 utcSaleDate.setUTCDate(utcSaleDate.getUTCDate() + durationInDays);
-                                 restockDate = utcSaleDate.toISOString().split('T')[0];
 
-                                 const parts = restockDate.split('-');
-                                 if (parts.length === 3) {
-                                     const restockDateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-                                     if (restockDateObj >= today && restockDateObj <= sevenDaysFromNow) {
-                                         upcoming.push({
-                                             clientName: invoice.clientName,
-                                             clientId: invoice.clientId,
-                                             productName: item.productName,
-                                             restockDate: restockDate
-                                         });
-                                     }
-                                 }
-                             }
-                         }
+        invoices.forEach(invoice => {
+          if (invoice.items) {
+            invoice.items.forEach(item => {
+              if (item.followUpStatus === 'pendiente') {
+                const product = productsMap.get(item.productId);
+                let restockDate = '';
+                if (product?.restockTimeDays && product.restockTimeDays > 0) {
+                  const numberOfPeople = item.numberOfPeople || 1;
+                  const quantity = item.quantity || 1;
+                  if (numberOfPeople > 0) {
+                    const durationInDays = Math.floor((product.restockTimeDays * quantity) / numberOfPeople);
+                    const [year, month, day] = invoice.issueDate.split('-').map(Number);
+                    const utcSaleDate = new Date(Date.UTC(year, month - 1, day));
+                    utcSaleDate.setUTCDate(utcSaleDate.getUTCDate() + durationInDays);
+                    restockDate = utcSaleDate.toISOString().split('T')[0];
+
+                    const parts = restockDate.split('-');
+                    if (parts.length === 3) {
+                      const restockDateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                      if (restockDateObj >= today && restockDateObj <= sevenDaysFromNow) {
+                        upcoming.push({
+                          clientName: invoice.clientName,
+                          clientId: invoice.clientId,
+                          productName: item.productName,
+                          restockDate: restockDate
+                        });
+                      }
                     }
-                });
-            }
+                  }
+                }
+              }
+            });
+          }
         });
         setFollowUps(upcoming.sort((a, b) => new Date(a.restockDate).getTime() - new Date(b.restockDate).getTime()));
 
@@ -188,7 +191,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     const contentEl = contentAreaRef.current;
-    
+
     const handleScroll = () => {
       const scrollY = window.scrollY || contentEl?.scrollTop || 0;
       if (scrollY > 300) {
@@ -211,7 +214,7 @@ export default function DashboardLayout({
     window.scrollTo({ top: 0, behavior: 'smooth' });
     contentAreaRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  
+
   const capitalizeFirstLetter = (string: string | undefined) => {
     if (!string) return '';
     return string.charAt(0).toUpperCase() + string.slice(1);
@@ -219,16 +222,16 @@ export default function DashboardLayout({
 
   if (loading) {
     return (
-       <div className="flex items-center justify-center h-screen">
-          <div className="flex flex-col items-center gap-4">
-            <Logo />
-            <p>Cargando tu espacio de trabajo...</p>
-            <Loader2 className="h-6 w-6 animate-spin" />
-          </div>
-       </div>
+      <div className="flex items-center justify-center h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <Logo />
+          <p>Cargando tu espacio de trabajo...</p>
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      </div>
     )
   }
-  
+
   if (!user) {
     return null;
   }
@@ -241,7 +244,7 @@ export default function DashboardLayout({
     // Starts with for other nested routes
     return pathname.startsWith(itemHref) ? "bg-secondary text-primary" : "";
   }
-  
+
   const activeFollowUps = followUps.filter(f => !dismissedNotifications.has(`follow-${f.clientId}-${f.productName}-${f.restockDate}`));
   const activeLowStock = lowStockProducts.filter(p => !dismissedNotifications.has(`stock-${p.id}`));
   const totalNotifications = activeFollowUps.length + activeLowStock.length;
@@ -256,7 +259,7 @@ export default function DashboardLayout({
           <div className="flex-1">
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
               {navItems.map((item) => (
-                 <Link
+                <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
@@ -286,11 +289,11 @@ export default function DashboardLayout({
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="flex flex-col">
-               <VisuallyHidden>
-                 <SheetHeader>
-                    <SheetTitle>Menú de Navegación</SheetTitle>
-                 </SheetHeader>
-               </VisuallyHidden>
+              <VisuallyHidden>
+                <SheetHeader>
+                  <SheetTitle>Menú de Navegación</SheetTitle>
+                </SheetHeader>
+              </VisuallyHidden>
               <div className="mt-4">
                 <Logo />
               </div>
@@ -324,7 +327,7 @@ export default function DashboardLayout({
                 />
               </div>
             )}
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full relative">
@@ -346,16 +349,16 @@ export default function DashboardLayout({
                           {activeFollowUps.map((followUp) => {
                             const notificationId = `follow-${followUp.clientId}-${followUp.productName}-${followUp.restockDate}`;
                             return (
-                               <DropdownMenuItem key={notificationId} asChild>
+                              <DropdownMenuItem key={notificationId} asChild>
                                 <Link href={`/dashboard/clients/${followUp.clientId}`} className="items-start relative group/notification w-full">
                                   <CalendarClock className="mr-2 mt-1 h-4 w-4 flex-shrink-0" />
                                   <div className="flex-1 flex flex-col pr-6">
                                     <span>Seguimiento: <span className="font-semibold">{followUp.clientName}</span></span>
                                     <span className="text-xs text-muted-foreground">{followUp.productName} - Vence: {followUp.restockDate}</span>
                                   </div>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
                                     className="absolute top-1/2 right-0 -translate-y-1/2 h-6 w-6 rounded-full opacity-0 group-hover/notification:opacity-100"
                                     onClick={(e) => handleDismissNotification(notificationId, e)}
                                   >
@@ -368,24 +371,24 @@ export default function DashboardLayout({
                           })}
                         </>
                       )}
-                       {activeLowStock.length > 0 && (
+                      {activeLowStock.length > 0 && (
                         <>
                           {activeFollowUps.length > 0 && <DropdownMenuSeparator />}
                           {activeLowStock.map(product => {
-                             const notificationId = `stock-${product.id}`;
-                             return (
+                            const notificationId = `stock-${product.id}`;
+                            return (
                               <DropdownMenuItem key={notificationId} asChild>
                                 <Link href="/dashboard/products" className="items-start relative group/notification w-full">
                                   <Archive className="mr-2 mt-1 h-4 w-4 flex-shrink-0" />
                                   <div className="flex-1 flex flex-col pr-6">
                                     <span>Stock Bajo: <span className="font-semibold">{product.name}</span></span>
                                     <span className="text-xs text-muted-foreground">
-                                      {product.stock === 0 ? 'Agotado' : `${product.stock} unidades restantes.`}
+                                      {(product.batches?.reduce((acc: number, b: any) => acc + b.stock, 0) || 0) === 0 ? 'Agotado' : `${product.batches?.reduce((acc: number, b: any) => acc + b.stock, 0) || 0} unidades restantes.`}
                                     </span>
                                   </div>
-                                   <Button 
-                                    variant="ghost" 
-                                    size="icon" 
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
                                     className="absolute top-1/2 right-0 -translate-y-1/2 h-6 w-6 rounded-full opacity-0 group-hover/notification:opacity-100"
                                     onClick={(e) => handleDismissNotification(notificationId, e)}
                                   >
@@ -411,32 +414,32 @@ export default function DashboardLayout({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="relative cursor-pointer">
-                    <Button variant="secondary" size="icon" className="rounded-full">
-                        <Avatar>
-                        <AvatarImage src={user.photoURL ?? ''} alt="Avatar de usuario" />
-                        <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <span className="sr-only">Toggle user menu</span>
-                    </Button>
-                    {planId === 'pro' && (
-                        <Badge variant="default" className="absolute -top-1 -right-1 h-auto px-1.5 py-0.5 text-[10px] font-bold pointer-events-none ring-2 ring-background">
-                            PRO
-                        </Badge>
-                    )}
+                  <Button variant="secondary" size="icon" className="rounded-full">
+                    <Avatar>
+                      <AvatarImage src={user.photoURL ?? ''} alt="Avatar de usuario" />
+                      <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <span className="sr-only">Toggle user menu</span>
+                  </Button>
+                  {planId === 'pro' && (
+                    <Badge variant="default" className="absolute -top-1 -right-1 h-auto px-1.5 py-0.5 text-[10px] font-bold pointer-events-none ring-2 ring-background">
+                      PRO
+                    </Badge>
+                  )}
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
-                 <DropdownMenuSeparator />
-                 <DropdownMenuItem disabled>
-                    <div className="flex flex-col">
-                        <span>{user.email}</span>
-                        <span className="text-xs text-muted-foreground">Plan: {capitalizeFirstLetter(planId)}</span>
-                    </div>
-                 </DropdownMenuItem>
-                 <DropdownMenuItem disabled>
-                   <span>Cambiar de Plan (Próximamente)</span>
-                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled>
+                  <div className="flex flex-col">
+                    <span>{user.email}</span>
+                    <span className="text-xs text-muted-foreground">Plan: {capitalizeFirstLetter(planId)}</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled>
+                  <span>Cambiar de Plan (Próximamente)</span>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => router.push('/dashboard/settings')}>Configuración</DropdownMenuItem>
                 <DropdownMenuItem disabled>Soporte</DropdownMenuItem>

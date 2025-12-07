@@ -12,7 +12,7 @@ import { PageHeader } from "@/components/page-header"
 import { MoreHorizontal, PlusCircle, Trash2, Eye, Search, ChevronsUpDown, ArrowUp, ArrowDown, FileText, ArrowLeft, ArrowRight, ChevronsLeft, ChevronsRight, Edit } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/firebase/hooks";
-import { getQuotes } from "@/lib/firebase/service";
+import { getQuotes, deleteQuote } from "@/lib/firebase/service";
 import { quoteApi } from "@/lib/api/quoteApi";
 import type { Quote } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -75,7 +75,7 @@ export default function QuotesPage() {
   const handleConvertToInvoice = async (quoteId: string) => {
     if (!userId) return;
     try {
-      const newInvoiceId = await quoteApi.convertToInvoice(quoteId, userId);
+      const newInvoiceId = await quoteApi.convertToInvoice(quoteId);
       toast({
         title: "Cotización Convertida",
         description: "La cotización se ha convertido a factura y el stock ha sido actualizado.",

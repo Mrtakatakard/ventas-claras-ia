@@ -15,7 +15,7 @@ export interface Reminder {
 }
 
 export interface ClientType {
-  id:string;
+  id: string;
   name: string;
   description: string;
   userId: string;
@@ -25,7 +25,7 @@ export interface ClientType {
 }
 
 export interface Category {
-  id:string;
+  id: string;
   name: string;
   description: string;
   userId: string;
@@ -57,7 +57,7 @@ export interface Client {
 }
 
 export interface Payment {
-  id:string;
+  id: string;
   receiptNumber: string;
   amount: number;
   currency: 'DOP' | 'USD';
@@ -79,11 +79,13 @@ export interface ProductBatch {
 export interface Product {
   id: string;
   code: string;
-  name:string;
+  name: string;
   description: string;
   currency: 'DOP' | 'USD';
   category: string;
   batches: ProductBatch[];
+  price?: number;
+  cost?: number;
   isTaxExempt?: boolean;
   notificationThreshold?: number;
   imageUrl?: string;
@@ -166,4 +168,3 @@ export interface UserProfile {
   isActive: boolean;
 }
 
-    

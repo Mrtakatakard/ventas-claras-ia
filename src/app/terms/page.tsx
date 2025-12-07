@@ -37,29 +37,29 @@ export default function TermsOfServicePage() {
     <div className="min-h-screen bg-muted">
       <header className="bg-background shadow-sm">
         <div className="container mx-auto px-4 lg:px-6 py-4">
-            <Link href="/" className="text-lg font-bold text-primary">Ventas Claras</Link>
+          <Link href="/" className="text-lg font-bold text-primary">Ventas Claras</Link>
         </div>
       </header>
       <main className="container mx-auto p-4 md:p-8">
-        <PageHeader 
-            title="Términos y Condiciones de Servicio" 
-            description={`Última actualización: ${lastUpdated}`}
+        <PageHeader
+          title="Términos y Condiciones de Servicio"
+          description={`Última actualización: ${lastUpdated}`}
         />
         <Card className="mt-6">
           <CardContent className="pt-6 prose max-w-none">
             <p>Bienvenido a Ventas Claras. Estos términos y condiciones describen las reglas y regulaciones para el uso de nuestro sitio web y servicios.</p>
-            
+
             <h2>1. Aceptación de los Términos</h2>
             <p>Al acceder y utilizar nuestro servicio, usted acepta y se compromete a cumplir con los términos y disposiciones de este acuerdo. Si no está de acuerdo con alguna parte de los términos, no podrá acceder al servicio.</p>
-            
+
             <h2>2. Cuentas de Usuario</h2>
             <p>Cuando crea una cuenta con nosotros, debe proporcionarnos información precisa, completa y actualizada en todo momento. El no hacerlo constituye una violación de los términos, lo que puede resultar en la terminación inmediata de su cuenta en nuestro servicio. Usted es responsable de salvaguardar la contraseña que utiliza para acceder al servicio y de cualquier actividad o acción bajo su contraseña.</p>
-            
+
             <h2>3. Suscripciones y Pagos</h2>
             <p>Algunas partes del servicio se facturan por suscripción. Se le facturará de forma recurrente y periódica (mensual o anual). Su suscripción se renovará automáticamente al final de cada ciclo de facturación a menos que usted la cancele. El plan actual es de $15 USD por usuario activo por mes.</p>
 
             <h2>4. Contenido del Usuario</h2>
-            <p>Nuestro servicio le permite publicar, vincular, almacenar, compartir y poner a disposición cierta información, texto, gráficos u otro material ("Contenido"). Usted es responsable del Contenido que publica en el servicio, incluyendo su legalidad, fiabilidad y adecuación. Al publicar Contenido, usted nos otorga el derecho y la licencia para usar, modificar, ejecutar públicamente, mostrar públicamente, reproducir y distribuir dicho Contenido en y a través del servicio. Usted retiene todos sus derechos sobre cualquier Contenido que envíe, publique o muestre.</p>
+            <p>Nuestro servicio le permite publicar, vincular, almacenar, compartir y poner a disposición cierta información, texto, gráficos u otro material (&quot;Contenido&quot;). Usted es responsable del Contenido que publica en el servicio, incluyendo su legalidad, fiabilidad y adecuación. Al publicar Contenido, usted nos otorga el derecho y la licencia para usar, modificar, ejecutar públicamente, mostrar públicamente, reproducir y distribuir dicho Contenido en y a través del servicio. Usted retiene todos sus derechos sobre cualquier Contenido que envíe, publique o muestre.</p>
 
             <h2>5. Uso Prohibido</h2>
             <p>Usted se compromete a no utilizar el servicio para ningún propósito que sea ilegal o esté prohibido por estos términos. No puede utilizar el servicio de ninguna manera que pueda dañar, deshabilitar, sobrecargar o perjudicar el servicio.</p>
@@ -78,12 +78,12 @@ export default function TermsOfServicePage() {
           </CardContent>
         </Card>
       </main>
-       <footer className="border-t mt-8 py-6">
+      <footer className="border-t mt-8 py-6">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} Ventas Claras. Todos los derechos reservados.</p>
+          <p>&copy; {new Date().getFullYear()} Ventas Claras. Todos los derechos reservados.</p>
         </div>
       </footer>
-       {isVisible && (
+      {isVisible && (
         <Button
           onClick={scrollToTop}
           className="fixed bottom-5 right-5 h-12 w-12 rounded-full shadow-lg"

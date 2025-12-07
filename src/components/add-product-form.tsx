@@ -113,7 +113,7 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
         await productApi.update(product.id, productData);
         toast({ title: "Producto Actualizado", description: `El producto ${values.name} ha sido actualizado.` });
       } else {
-        await productApi.create(productData);
+        await productApi.create({ ...productData, description: productData.description || "" });
         logAnalyticsEvent('product_created');
         toast({ title: "Producto Agregado", description: `El producto ${values.name} ha sido agregado exitosamente.` });
       }

@@ -57,6 +57,11 @@ export default function EditInvoicePage() {
     const [dueDate, setDueDate] = useState('');
     const [items, setItems] = useState<InvoiceItemState[]>([]);
     const [includeITBIS, setIncludeITBIS] = useState(true);
+    const useCostPrice = false;
+
+    const getProductStock = (product: Product) => {
+        return product.batches?.reduce((acc, batch) => acc + batch.stock, 0) || 0;
+    };
 
     const formatCurrency = (num: number, currency?: 'DOP' | 'USD') => {
         return new Intl.NumberFormat('es-DO', { style: 'currency', currency: currency || 'DOP', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
@@ -156,7 +161,7 @@ export default function EditInvoicePage() {
             const product = products.find((p) => p.id === item.productId);
             if (!product) return;
 
-            const itemPrice = product.price;
+            const itemPrice = product.price || 0;
             const itemTotal = itemPrice * item.quantity;
             const itemDiscountAmount = itemTotal * (item.discount / 100);
             const itemNetTotal = itemTotal - itemDiscountAmount;
@@ -220,7 +225,7 @@ export default function EditInvoicePage() {
                     .filter(i => i.id !== id && i.productId === item.productId)
                     .reduce((sum, i) => sum + i.quantity, 0);
 
-                const availableStock = product.stock + originalQuantity - quantityInOtherLines;
+                const availableStock = getProductStock(product) + originalQuantity - quantityInOtherLines;
 
                 if (newQuantity > availableStock) {
                     toast({
@@ -293,7 +298,7 @@ export default function EditInvoicePage() {
             }
 
             const originalItemQuantity = invoice?.items.find(i => i.productId === productId)?.quantity || 0;
-            const totalAvailable = product.stock + originalItemQuantity;
+            const totalAvailable = getProductStock(product) + originalItemQuantity;
 
             if (totalQuantity > totalAvailable) {
                 toast({
@@ -308,25 +313,26 @@ export default function EditInvoicePage() {
 
 
         const invoiceItems: InvoiceItem[] = finalItemsState.map(item => {
-            const product = products.find(p => p.id === item.productId)!;
-            const unitPrice = product.price;
+            const product = products.find(p => p.id === item.productId);
+            // Ensure product exists before accessing its properties
+            const unitPrice = product ? (product.price || 0) : 0;
             const discountAmount = unitPrice * ((item.discount || 0) / 100);
 
             const newItem: InvoiceItem = {
-                productId: product.id,
-                productName: product.name,
+                productId: product?.id || '', // Add null check
+                productName: product?.name || 'Unknown Product', // Add null check
                 quantity: item.quantity,
-                unitPrice: product.price,
+                unitPrice: unitPrice,
                 discount: item.discount || 0,
                 finalPrice: unitPrice - discountAmount,
-                isTaxExempt: product.isTaxExempt,
+                isTaxExempt: product?.isTaxExempt || false, // Add null check
             };
 
             if (isRestockTrackingEnabled) {
                 newItem.numberOfPeople = item.numberOfPeople || 1;
             }
 
-            if (product.cost !== undefined) {
+            if (product?.cost !== undefined) { // Add null check
                 newItem.unitCost = product.cost;
             }
             return newItem;
@@ -340,7 +346,7 @@ export default function EditInvoicePage() {
             const product = products.find((p) => p.id === item.productId);
             if (!product) return;
 
-            const itemPrice = product.price;
+            const itemPrice = product.price || 0;
             const itemTotal = itemPrice * item.quantity;
             const itemDiscountAmount = itemTotal * ((item.discount || 0) / 100);
             const itemNetTotal = itemTotal - itemDiscountAmount;
@@ -441,7 +447,8 @@ export default function EditInvoicePage() {
                                                 const originalItem = invoice?.items.find(i => i.productId === item.productId);
                                                 const originalQuantity = originalItem ? originalItem.quantity : 0;
 
-                                                const itemTotal = product ? product.price * item.quantity : 0;
+                                                const unitPrice = product ? (product.price || 0) : 0;
+                                                const itemTotal = unitPrice * item.quantity;
                                                 const itemDiscount = itemTotal * (item.discount / 100);
                                                 const finalTotal = itemTotal - itemDiscount;
 
@@ -452,10 +459,10 @@ export default function EditInvoicePage() {
                                                                 <SelectTrigger><SelectValue placeholder="Seleccionar producto..." /></SelectTrigger>
                                                                 <SelectContent>
                                                                     {availableProducts
-                                                                        .filter(p => (p.stock + (p.id === item.productId ? originalQuantity : 0)) > 0 || p.id === item.productId)
+                                                                        .filter(p => (getProductStock(p) + (p.id === item.productId ? originalQuantity : 0)) > 0 || p.id === item.productId)
                                                                         .map((p) => (
-                                                                            <SelectItem key={p.id} value={p.id} disabled={(p.stock + (p.id === item.productId ? originalQuantity : 0)) <= 0 && p.id !== item.productId}>
-                                                                                {p.name} ({p.stock + (p.id === item.productId ? originalQuantity : 0)} en stock)
+                                                                            <SelectItem key={p.id} value={p.id} disabled={(getProductStock(p) + (p.id === item.productId ? originalQuantity : 0)) <= 0 && p.id !== item.productId}>
+                                                                                {p.name} ({getProductStock(p) + (p.id === item.productId ? originalQuantity : 0)} en stock)
                                                                             </SelectItem>
                                                                         ))
                                                                     }
@@ -474,7 +481,7 @@ export default function EditInvoicePage() {
                                                             </TableCell>
                                                         )}
                                                         <TableCell><Input type="number" min="0" max="100" value={item.discount} onChange={(e) => handleItemChange(item.id, 'discount', e.target.value)} /></TableCell>
-                                                        <TableCell className="text-right">{product ? formatCurrency(product.price, invoiceCurrency) : "-"}</TableCell>
+                                                        <TableCell className="text-right">{product ? formatCurrency(product.price || 0, invoiceCurrency) : "-"}</TableCell>
                                                         <TableCell className="text-right font-medium">{formatCurrency(finalTotal, invoiceCurrency)}</TableCell>
                                                         <TableCell><Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)} disabled={items.length <= 1}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                                                     </TableRow>

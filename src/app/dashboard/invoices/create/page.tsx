@@ -55,6 +55,10 @@ export default function CreateInvoicePage() {
     const [includeITBIS, setIncludeITBIS] = useState(true);
     const [useCostPrice, setUseCostPrice] = useState(false);
 
+    const getProductStock = (product: Product) => {
+        return product.batches?.reduce((acc, batch) => acc + batch.stock, 0) || 0;
+    };
+
     const formatCurrency = (num: number, currency?: 'DOP' | 'USD') => {
         return new Intl.NumberFormat('es-DO', { style: 'currency', currency: currency || 'DOP', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
     };
@@ -117,7 +121,7 @@ export default function CreateInvoicePage() {
     }, [selectedClient, clientTypes]);
 
     const { subtotal, discountTotal, netSubtotal, taxableSubtotal, itbis, total } = useMemo(() => {
-        const getPrice = (product: Product) => useCostPrice ? (product.cost ?? 0) : product.price;
+        const getPrice = (product: Product) => useCostPrice ? (product.cost ?? 0) : (product.price || 0);
 
         let grossSubtotal = 0;
         let currentDiscountTotal = 0;
@@ -188,7 +192,7 @@ export default function CreateInvoicePage() {
                     .filter(i => i.id !== id && i.productId === item.productId)
                     .reduce((sum, i) => sum + i.quantity, 0);
 
-                const availableStock = product.stock - quantityInOtherLines;
+                const availableStock = getProductStock(product) - quantityInOtherLines;
 
                 if (newQuantity > availableStock) {
                     toast({
@@ -259,10 +263,10 @@ export default function CreateInvoicePage() {
                 setIsSaving(false);
                 return;
             }
-            if (totalQuantity > product.stock) {
+            if (totalQuantity > getProductStock(product)) {
                 toast({
                     title: "Stock Insuficiente",
-                    description: `La cantidad total para "${product.name}" (${totalQuantity}) excede el stock disponible de ${product.stock} unidades.`,
+                    description: `La cantidad total para "${product.name}" (${totalQuantity}) excede el stock disponible de ${getProductStock(product)} unidades.`,
                     variant: "destructive"
                 });
                 setIsSaving(false);
@@ -272,7 +276,7 @@ export default function CreateInvoicePage() {
 
         const invoiceItems: InvoiceItem[] = finalItemsState.map(item => {
             const product = products.find(p => p.id === item.productId)!;
-            const unitPrice = useCostPrice ? (product.cost ?? 0) : product.price;
+            const unitPrice = useCostPrice ? (product.cost ?? 0) : (product.price || 0);
             const discountAmount = unitPrice * ((item.discount || 0) / 100);
 
             const newItem: InvoiceItem = {
@@ -296,7 +300,7 @@ export default function CreateInvoicePage() {
             return newItem;
         });
 
-        const getPrice = (product: Product) => useCostPrice ? (product.cost ?? 0) : product.price;
+        const getPrice = (product: Product) => useCostPrice ? (product.cost ?? 0) : (product.price || 0);
 
         let grossSubtotal = 0;
         let currentDiscountTotal = 0;
@@ -425,7 +429,7 @@ export default function CreateInvoicePage() {
                                         <TableBody>
                                             {items.map(item => {
                                                 const product = availableProducts.find(p => p.id === item.productId);
-                                                const unitPrice = product ? (useCostPrice ? (product.cost ?? 0) : product.price) : 0;
+                                                const unitPrice = product ? (useCostPrice ? (product.cost ?? 0) : (product.price || 0)) : 0;
                                                 const itemTotal = unitPrice * item.quantity;
                                                 const itemDiscount = itemTotal * (item.discount / 100);
                                                 const finalTotal = itemTotal - itemDiscount;
@@ -437,10 +441,10 @@ export default function CreateInvoicePage() {
                                                                 <SelectTrigger><SelectValue placeholder="Seleccionar producto..." /></SelectTrigger>
                                                                 <SelectContent>
                                                                     {availableProducts
-                                                                        .filter(p => p.stock > 0 || p.id === item.productId)
+                                                                        .filter(p => getProductStock(p) > 0 || p.id === item.productId)
                                                                         .map((p) => (
-                                                                            <SelectItem key={p.id} value={p.id} disabled={p.stock <= 0 && p.id !== item.productId}>
-                                                                                {p.name} ({p.stock} en stock)
+                                                                            <SelectItem key={p.id} value={p.id} disabled={getProductStock(p) <= 0 && p.id !== item.productId}>
+                                                                                {p.name} ({getProductStock(p)} en stock)
                                                                             </SelectItem>
                                                                         ))
                                                                     }
