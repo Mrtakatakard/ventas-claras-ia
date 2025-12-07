@@ -1,24 +1,21 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.invoiceRepository = void 0;
-const index_1 = require("../index");
+import { db } from "../index";
 const COLLECTION_NAME = "invoices";
-exports.invoiceRepository = {
+export const invoiceRepository = {
     async create(invoice) {
-        await index_1.db.collection(COLLECTION_NAME).doc(invoice.id).set(invoice);
+        await db.collection(COLLECTION_NAME).doc(invoice.id).set(invoice);
     },
     async update(id, data) {
-        await index_1.db.collection(COLLECTION_NAME).doc(id).update(data);
+        await db.collection(COLLECTION_NAME).doc(id).update(data);
     },
     async delete(id) {
-        await index_1.db.collection(COLLECTION_NAME).doc(id).delete();
+        await db.collection(COLLECTION_NAME).doc(id).delete();
     },
     async get(id) {
-        const doc = await index_1.db.collection(COLLECTION_NAME).doc(id).get();
+        const doc = await db.collection(COLLECTION_NAME).doc(id).get();
         return doc.exists ? doc.data() : null;
     },
     async getReceivables(userId) {
-        const snapshot = await index_1.db.collection(COLLECTION_NAME)
+        const snapshot = await db.collection(COLLECTION_NAME)
             .where("userId", "==", userId)
             .where("balanceDue", ">", 0)
             .get();

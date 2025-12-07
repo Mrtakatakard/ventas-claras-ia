@@ -38,7 +38,10 @@ type ProductWithCalculations = Product & { totalStock: number; nextExpiration?: 
 type SortKey = keyof ProductWithCalculations;
 
 
-export default function ProductsPage() {
+
+import { Suspense } from 'react';
+
+function ProductsContent() {
   const searchParams = useSearchParams();
   const { userId } = useAuth();
   const { toast } = useToast();
@@ -192,9 +195,9 @@ export default function ProductsPage() {
           'Descripción': p.description,
           'Imagen URL': p.imageUrl,
           'Lote #': 'N/A',
-          'Costo': 0,
-          'Precio': 0,
-          'Stock': 0,
+          'Costo': 'N/A',
+          'Precio': 'N/A',
+          'Stock': 'N/A',
           'Expiración': 'N/A',
         }];
       }
@@ -209,10 +212,10 @@ export default function ProductsPage() {
         'Descripción': p.description,
         'Imagen URL': p.imageUrl,
         'Lote #': `Lote ${index + 1}`,
-        'Costo': p.cost || 0,
-        'Precio': batch.price,
-        'Stock': batch.stock,
-        'Expiración': batch.expirationDate,
+        'Costo': String(batch.cost),
+        'Precio': String(batch.price),
+        'Stock': String(batch.stock),
+        'Expiración': batch.expirationDate || 'N/A',
       }));
     });
 
@@ -528,4 +531,13 @@ export default function ProductsPage() {
     </>
   );
 }
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
+      <ProductsContent />
+    </Suspense>
+  );
+}
+
 

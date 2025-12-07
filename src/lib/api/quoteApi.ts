@@ -1,9 +1,14 @@
 import { functions } from "../firebase/config";
 import { httpsCallable } from "firebase/functions";
-import { Quote } from "../../../functions/src/types";
+import { Quote } from "@/lib/types";
+import { getQuotes } from "../firebase/service";
 
 export const quoteApi = {
-    create: async (quote: Omit<Quote, 'id' | 'createdAt' | 'isActive'>): Promise<string> => {
+    list: async (userId: string): Promise<Quote[]> => {
+        return getQuotes(userId);
+    },
+
+    create: async (quote: Omit<Quote, 'id' | 'createdAt' | 'isActive' | 'quoteNumber'>): Promise<string> => {
         const createQuote = httpsCallable(functions, 'quoteController-createQuote');
         const result = await createQuote(quote);
         return result.data as string;

@@ -46,10 +46,11 @@ export function AddClientTypeForm({ onSuccess, clientType }: AddClientTypeFormPr
       return;
     }
 
-    const dataToSave: Omit<ClientType, 'id' | 'createdAt' | 'userId' | 'isActive'> = {
-        name: values.name,
-        description: values.description || '',
-        enableRestockTracking: values.enableRestockTracking || false,
+    const dataToSave: Omit<ClientType, 'id' | 'createdAt' | 'isActive'> = {
+      name: values.name,
+      description: values.description || '',
+      enableRestockTracking: values.enableRestockTracking,
+      userId: userId,
     }
 
     try {
@@ -68,8 +69,8 @@ export function AddClientTypeForm({ onSuccess, clientType }: AddClientTypeFormPr
       }
       onSuccess();
       form.reset();
-    } catch(e) {
-       toast({ title: "Error", description: "No se pudo guardar el tipo de cliente.", variant: "destructive" });
+    } catch (e) {
+      toast({ title: "Error", description: "No se pudo guardar el tipo de cliente.", variant: "destructive" });
     }
   }
 
@@ -82,11 +83,11 @@ export function AddClientTypeForm({ onSuccess, clientType }: AddClientTypeFormPr
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField control={form.control} name="name" render={({ field }) => (
-            <FormItem><FormLabel>Nombre del Tipo de Cliente</FormLabel><FormControl><Input placeholder="Ej: Cliente VIP" {...field} /></FormControl><FormMessage /></FormItem>
-          )}/>
+          <FormItem><FormLabel>Nombre del Tipo de Cliente</FormLabel><FormControl><Input placeholder="Ej: Cliente VIP" {...field} /></FormControl><FormMessage /></FormItem>
+        )} />
         <FormField control={form.control} name="description" render={({ field }) => (
-            <FormItem><FormLabel>Descripción (Opcional)</FormLabel><FormControl><Textarea placeholder="Describe este tipo de cliente..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-          )} />
+          <FormItem><FormLabel>Descripción (Opcional)</FormLabel><FormControl><Textarea placeholder="Describe este tipo de cliente..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+        )} />
         <FormField
           control={form.control}
           name="enableRestockTracking"
@@ -107,7 +108,7 @@ export function AddClientTypeForm({ onSuccess, clientType }: AddClientTypeFormPr
             </FormItem>
           )}
         />
-        
+
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={handleCancel}>Cancelar</Button>
           <Button type="submit">{isEditing ? 'Guardar Cambios' : 'Agregar Tipo'}</Button>

@@ -220,8 +220,8 @@ export default function InvoiceDetailPage() {
     const { default: autoTable } = await import('jspdf-autotable');
 
     const doc = new jsPDF();
-    const primaryColor = [44, 175, 224];
-    const backgroundColor = [240, 248, 255];
+    const primaryColor: [number, number, number] = [44, 175, 224];
+    const backgroundColor: [number, number, number] = [240, 248, 255];
 
     // Header
     doc.setFontSize(24);
@@ -287,7 +287,7 @@ export default function InvoiceDetailPage() {
         formatCurrency(payment.amount, invoice.currency),
       ]],
       theme: 'striped',
-      headStyles: { fillColor: primaryColor as [number, number, number] },
+      headStyles: { fillColor: primaryColor },
       columnStyles: {
         2: { halign: 'right' }
       }

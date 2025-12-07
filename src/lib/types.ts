@@ -84,8 +84,10 @@ export interface Product {
   currency: 'DOP' | 'USD';
   category: string;
   batches: ProductBatch[];
+  // Computed properties from first batch for backward compatibility
   price?: number;
   cost?: number;
+  stock?: number;
   isTaxExempt?: boolean;
   notificationThreshold?: number;
   imageUrl?: string;

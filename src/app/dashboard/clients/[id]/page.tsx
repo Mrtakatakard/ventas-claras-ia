@@ -368,8 +368,6 @@ export default function ClientDetailPage() {
     try {
       await invoiceApi.update(invoiceId, { items: newItems });
 
-      // Update local state
-
       toast({
         title: "Seguimiento Actualizado",
         description: `El estado del seguimiento ha sido cambiado.`,

@@ -37,7 +37,7 @@ import Link from "next/link"
 import { PageHeader } from "@/components/page-header"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/lib/firebase/hooks"
-import { getAllInvoicesForAdmin, getAllClientsForAdmin, getTeamMembers } from "@/lib/firebase/service"
+import { getAllInvoicesForAdmin, getAllClientsForAdmin, getAllTeamMembersForAdmin } from "@/lib/firebase/service"
 import type { Invoice, Client, UserProfile } from "@/lib/types"
 
 const chartConfig = {
@@ -48,7 +48,7 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export default function AdminDashboardPage() {
-  const { role, loading: authLoading, userId } = useAuth();
+  const { role, loading: authLoading } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [team, setTeam] = useState<UserProfile[]>([]);
@@ -70,7 +70,7 @@ export default function AdminDashboardPage() {
         const [invoicesData, clientsData, teamData] = await Promise.all([
           getAllInvoicesForAdmin(),
           getAllClientsForAdmin(),
-          userId ? getTeamMembers(userId) : Promise.resolve([]),
+          getAllTeamMembersForAdmin(),
         ]);
         setInvoices(invoicesData);
         setClients(clientsData);
@@ -154,7 +154,7 @@ export default function AdminDashboardPage() {
       .slice(0, 5);
 
     const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    const chartDataMonths: any[] = [];
+    const chartDataMonths: Array<{ monthLabel: string; month: number; year: number; total: number }> = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       chartDataMonths.push({

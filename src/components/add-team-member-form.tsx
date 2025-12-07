@@ -39,7 +39,7 @@ export function AddTeamMemberForm({ onSuccess, member }: AddTeamMemberFormProps)
       form.reset({
         name: member.name,
         email: member.email,
-        role: member.role as 'admin' | 'user',
+        role: member.role === 'superAdmin' ? 'admin' : member.role,
       });
     } else {
       form.reset({ name: "", email: "", role: "user" });
