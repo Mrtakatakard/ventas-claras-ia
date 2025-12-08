@@ -3,10 +3,10 @@
  */
 
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import * as admin from 'firebase-admin';
+
 import * as logger from 'firebase-functions/logger';
 
-const db = admin.firestore();
+import { db } from '../config/firebase';
 
 export const getAccountsReceivable = onCall(async (request) => {
     // 1. Authentication check
@@ -18,7 +18,7 @@ export const getAccountsReceivable = onCall(async (request) => {
     logger.info(`Fetching accounts receivable for user: ${uid}`);
 
     try {
-    // 2. Query for invoices with a balance due
+        // 2. Query for invoices with a balance due
         const invoicesRef = db.collection('invoices');
         const q = invoicesRef
             .where('userId', '==', uid)

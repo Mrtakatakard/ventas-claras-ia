@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     const session = request.cookies.get('session'); // Adjust based on actual auth implementation (e.g. Firebase cookies)
 
     // NOTE: Simple client-side auth via Firebase SDK usually doesn't set a server-side cookie automatically.

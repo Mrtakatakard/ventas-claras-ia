@@ -6,7 +6,8 @@ import { z } from 'zod';
 // Input Schema
 const WhatsAppGeneratorInputSchema = z.object({
     clientName: z.string(),
-    productsToRefill: z.array(z.string()).describe("List of product names to suggest."),
+    intent: z.enum(['REFILL', 'CROSS_SELL', 'BIRTHDAY', 'GENERAL', 'FOLLOW_UP']).describe("The purpose of the message."),
+    context: z.string().describe("Details: product names, specific suggestion text, or context."),
     tone: z.enum(['Casual', 'Formal', 'Enthusiastic']).default('Casual'),
 });
 
@@ -27,19 +28,24 @@ const whatsAppGeneratorPrompt = ai.definePrompt({
     Act as a friendly and professional Amway Business Owner.
     Write a short WhatsApp message to a client named {{clientName}}.
     
-    Goal: Gently suggest they might need a refill for the following products:
-    {{#each productsToRefill}}
-    - {{this}}
-    {{/each}}
+    Goal: {{intent}}
+    Context: {{context}}
     
     Tone: {{tone}}
     
     Requirements:
-    - Language: Spanish (Dominican Republic style ideally, but neutral is fine).
+    - Language: STRICTLY Spanish (Dominican Republic friendly/neutral). No English.
     - Length: Short and concise (whatsapp style). Max 2-3 sentences.
-    - Do NOT sound pushy. Frame it as "Customer Service" or "Checking in".
+    - Do NOT sound pushy. Frame it as helpful service.
     - Include 1-2 relevant emojis.
-    - End with a simple question to encourage a reply (e.g., "¿Te aparto uno?").
+    
+    Specific Guidance by Intent:
+    - REFILL: "Noté que hace tiempo compraste {{context}}. ¿Te queda todavía o te aparto uno?"
+    - CROSS_SELL: "Como usas productos de belleza/hogar, pensé que te gustaría probar {{context}}."
+    - BIRTHDAY: "¡Feliz Cumpleaños! 🎉 Espero que la pases súper bien."
+    - FOLLOW_UP: "Hola! Solo pasando para ver cómo te va con {{context}}."
+    
+    End with a simple engaging question if appropriate.
   `,
 });
 

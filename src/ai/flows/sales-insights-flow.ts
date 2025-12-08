@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI agent that provides personalized sales insights for a given client.
@@ -21,23 +20,33 @@ const SalesInsightsInputSchema = z.object({
 });
 export type SalesInsightsInput = z.infer<typeof SalesInsightsInputSchema>;
 
+// The final output returned to the frontend
 const SalesInsightsOutputSchema = z.object({
-  insights: z.array(z.string()).describe('An array of 3 to 5 personalized and actionable sales tips.'),
+  insights: z.array(z.object({
+    id: z.string(),
+    text: z.string(),
+    completed: z.boolean()
+  })).describe('An array of personalized sales tips.'),
 });
 export type SalesInsightsOutput = z.infer<typeof SalesInsightsOutputSchema>;
 
 export async function getSalesInsights(input: SalesInsightsInput): Promise<SalesInsightsOutput> {
-    return salesInsightsFlow(input);
+  return salesInsightsFlow(input);
 }
+
+// The raw output from the AI Prompt (strings only)
+const SalesInsightsPromptOutput = z.object({
+  insights: z.array(z.string()).describe('An array of 3 to 5 personalized and actionable sales tips.'),
+});
 
 const salesInsightsPrompt = ai.definePrompt({
   name: 'salesInsightsPrompt',
   input: { schema: SalesInsightsInputSchema },
-  output: { schema: SalesInsightsOutputSchema },
+  output: { schema: SalesInsightsPromptOutput },
   prompt: `
     You are an expert sales mentor AI integrated into a CRM called Ventas Claras. 
     Your goal is to provide personalized, actionable sales recommendations to the user based on the data of a specific client.
-    Your response must be in Spanish.
+    Your response must be STRICTLY in Spanish. Do NOT use English.
 
     Here is the data for the client you need to analyze:
     - Client Profile: {{{client}}}
@@ -45,22 +54,25 @@ const salesInsightsPrompt = ai.definePrompt({
     - All Available Products: {{{allProducts}}}
     - Invoices from other clients (for comparison): {{{similarClientInvoices}}}
     
-    Analyze the provided JSON data to generate your recommendations. Look for patterns in their purchase history, payment behavior, current debt, and missing profile information. Identify cross-selling opportunities by comparing their purchases with what similar clients buy.
-
-    When suggesting specific products, use ONLY the product's 'name'. DO NOT include the product's ID in your response.
-
-    Based on your analysis, provide a list of 3-5 short, concise, and practical tips in the 'insights' array. Each tip must be a single, direct sentence.
-    **CRITICAL**: Each string in the 'insights' array MUST start with a single relevant emoji, followed by a single space, and then the text of the tip. Do not add any introductory phrases like "¡Hola!".
-
-    **Example of a correct tip:** "🎁 Intenta conseguir su fecha de cumpleaños para un detalle especial."
-    **Example of an incorrect tip:** "He notado que no tienes la fecha de cumpleaños de Kaury..."
-
+    Analyze the provided JSON data to generate your recommendations. Look for patterns in their purchase history, payment behavior, current debt, and missing profile information. 
+    
+    **STRATEGIC GOAL: ROUTINE BUILDING & SYNERGY**
+    You must go beyond simple refills. Suggest products that COMPLETE a solution.
+    - **Skin Care (Artistry) + Nutrition (Nutrilite):** If they buy skin care, suggest specific supplements like Collagen, Biotin, or Vitamin C.
+    - **Routine Completeness:** If they buy a Cleanser, check if they have a Toner or Moisturizer. If not, suggest it.
+    - **Home + Personal:** If they buy Laundry detergent, suggest surface cleaners.
+    
+    When suggesting specific products, use ONLY the product's 'name' from the 'All Available Products' list if possible, or well-known Amway products if missing.
+    
+    Based on your analysis, provide a list of 3-5 short, concise, and practical tips in the 'insights' array.
+    **CRITICAL**: Each string in the 'insights' array MUST start with a single relevant emoji, followed by a single space.
+    
     **Scenario-based tips:**
-    - If the client has a high 'balanceDue', provide respectful tips for collection (e.g., "🗓️ Parece que hay un saldo pendiente. Un recordatorio amistoso podría ser útil.").
-    - If the client is a loyal, frequent customer with no debt, congratulate the user (e.g., "🎉 ¡Excelente trabajo! Este es un cliente estrella.") and suggest loyalty rewards or upselling higher-value products.
-    - If the user is missing the client's 'birthday', recommend they get it for relationship building (e.g., "🎁 Intenta conseguir su fecha de cumpleaños para un detalle especial.").
-    - Suggest when to offer a discount (e.g., to close a big sale, as a reward for prompt payment, or to introduce a new product).
-
+    - **Cross-Sell (High Priority):** "💄 Compraste Artistry? Prueba la Vitamina C para potenciar tu piel desde dentro."
+    - **Debt:** "🗓️ Parece que hay un saldo pendiente. Un recordatorio amistoso podría ser útil."
+    - **Loyalty:** "🎉 ¡Cliente estrella! Ofrécele un descuento en su próxima compra de Nutrilite."
+    - **Relationship:** "🎁 Intenta conseguir su fecha de cumpleaños para un detalle especial."
+    
     Generate the 'insights' array now.
   `,
 });
@@ -77,7 +89,10 @@ const salesInsightsFlow = ai.defineFlow(
 
     if (!clientId) {
       const { output } = await salesInsightsPrompt(input);
-      return output!;
+      // Fallback for missing ID: wrap strings in temp IDs
+      return {
+        insights: output ? output.insights.map(text => ({ id: crypto.randomUUID(), text, completed: false })) : []
+      };
     }
 
     const cacheCollection = collection(db, 'cacheSugerencias');
@@ -91,21 +106,59 @@ const salesInsightsFlow = ai.defineFlow(
       const generatedAt = cacheData.generadaEn as Timestamp;
 
       if (generatedAt && generatedAt.seconds > twentyFourHoursAgo) {
-        return { insights: cacheData.sugerencia };
+        // Return cached data directly
+        const cachedInsights = cacheData.sugerencia;
+        // Migration check: if cache is strings (legacy), regenerate or migrate
+        if (Array.isArray(cachedInsights) && cachedInsights.length > 0 && typeof cachedInsights[0] === 'string') {
+          // Treating legacy cache as expired/invalid to force strict object structure
+        } else {
+          return { insights: cachedInsights || [] };
+        }
       }
     }
 
-    // Cache doesn't exist or is stale, generate new insights
+    // Generate new insights
     const { output } = await salesInsightsPrompt(input);
 
     if (output) {
+      const structuredInsights = output.insights.map(text => ({
+        id: crypto.randomUUID(),
+        text,
+        completed: false
+      }));
+
       await setDoc(cacheDocRef, {
         clienteId: clientId,
-        sugerencia: output.insights,
+        userId: clientData.userId,
+        sugerencia: structuredInsights,
         generadaEn: Timestamp.now(),
       });
+
+      return { insights: structuredInsights };
     }
 
-    return output!;
+    return { insights: [] };
   }
 );
+
+export async function toggleInsightCompletion(clientId: string, suggestionId: string): Promise<boolean> {
+  if (!clientId || !suggestionId) return false;
+
+  const cacheCollection = collection(db, 'cacheSugerencias');
+  const cacheDocRef = doc(cacheCollection, clientId);
+  const cacheDocSnap = await getDoc(cacheDocRef);
+
+  if (cacheDocSnap.exists()) {
+    const data = cacheDocSnap.data();
+    const suggestions = data.sugerencia || [];
+
+    // Toggle completion
+    const updatedSuggestions = suggestions.map((s: any) =>
+      s.id === suggestionId ? { ...s, completed: !s.completed } : s
+    );
+
+    await setDoc(cacheDocRef, { ...data, sugerencia: updatedSuggestions });
+    return true;
+  }
+  return false;
+}

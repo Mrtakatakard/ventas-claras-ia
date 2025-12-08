@@ -17,18 +17,18 @@ if (!appHostingConfig) {
   validateEnv();
 }
 
-if (typeof window === 'undefined') {
-  // Fix for "TypeError: localStorage.getItem is not a function"
-  if (typeof localStorage !== 'undefined' && typeof localStorage.getItem !== 'function') {
-    console.warn('Detected broken global localStorage on server. Removing it to prevent crashes.');
-    try {
-      // @ts-ignore
-      delete global.localStorage;
-    } catch (e) {
-      console.error('Failed to delete broken localStorage:', e);
-    }
-  }
-}
+// if (typeof window === 'undefined') {
+//   // Fix for "TypeError: localStorage.getItem is not a function"
+//   if (typeof localStorage !== 'undefined' && typeof localStorage.getItem !== 'function') {
+//     console.warn('Detected broken global localStorage on server. Removing it to prevent crashes.');
+//     try {
+//       // @ts-ignore
+//       delete global.localStorage;
+//     } catch (e) {
+//       console.error('Failed to delete broken localStorage:', e);
+//     }
+//   }
+// }
 
 // Your web app's Firebase configuration
 export const firebaseConfig = appHostingConfig || {

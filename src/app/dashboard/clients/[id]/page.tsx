@@ -11,6 +11,7 @@ import { invoiceApi } from '@/lib/api/invoiceApi';
 import { clientApi } from '@/lib/api/clientApi';
 import { getSmartRefill } from '@/ai/flows/smart-refill-flow';
 import { getWhatsAppMessage } from '@/ai/flows/whatsapp-generator-flow';
+import { getSalesInsights, toggleInsightCompletion } from '@/ai/flows/sales-insights-flow';
 
 import { PageHeader } from '@/components/page-header';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -18,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Mail, Phone, Cake, PlusCircle, Tag, MoreHorizontal, MapPin, Download, Edit, Trash2, MoreVertical, ChevronsLeft, ArrowLeft, ArrowRight, ChevronsRight, DollarSign, Sparkles, Eye, Info, Clipboard, MessageSquare, CheckCircle2, Copy, Send } from 'lucide-react';
+import { Mail, Phone, Cake, PlusCircle, Tag, MoreHorizontal, MapPin, Download, Edit, Trash2, MoreVertical, ChevronsLeft, ArrowLeft, ArrowRight, ChevronsRight, DollarSign, Sparkles, Eye, Info, Clipboard, MessageSquare, CheckCircle2, Copy, Send, Bell, ShoppingBag, CreditCard, User, TrendingUp } from 'lucide-react';
 import { DialogFooter } from "@/components/ui/dialog"
 
 import type { Client, Invoice, Reminder, Product, InvoiceItem, ClientType } from '@/lib/types';
@@ -65,9 +66,11 @@ export default function ClientDetailPage() {
   const [insights, setInsights] = useState<string[] | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [refillOpportunities, setRefillOpportunities] = useState<any[] | null>(null);
+  const [generalSuggestions, setGeneralSuggestions] = useState<any[] | null>(null);
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
   const [messageDraft, setMessageDraft] = useState('');
   const [messageLoading, setMessageLoading] = useState(false);
+  const [errorType, setErrorType] = useState<'not_found' | 'permission_denied' | 'generic' | null>(null);
 
 
   // Pagination States
@@ -127,9 +130,14 @@ export default function ClientDetailPage() {
       } else {
         notFound();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching client data:", error);
-      toast({ title: "Error", description: "No se pudo cargar la información del cliente.", variant: "destructive" });
+      if (error?.code === 'permission-denied') {
+        setErrorType('permission_denied');
+      } else {
+        setErrorType('generic');
+        toast({ title: "Error", description: "No se pudo cargar la información del cliente.", variant: "destructive" });
+      }
     } finally {
       setLoading(false);
     }
@@ -151,7 +159,7 @@ export default function ClientDetailPage() {
 
   useEffect(() => {
     if (!loading && client && refillOpportunities === null && canSeeAiInsights) {
-      const fetchRefills = async () => {
+      const fetchAiData = async () => {
         setInsightsLoading(true);
         try {
           // Prepare purchase history for the AI
@@ -159,26 +167,65 @@ export default function ClientDetailPage() {
             inv.items.map(item => `${item.productName} (Qty: ${item.quantity}, Date: ${inv.issueDate})`)
           ).join('\n');
 
-          const result = await getSmartRefill({
-            clientName: client.name,
-            purchaseHistory: purchaseHistory,
-            currentDate: new Date().toISOString().split('T')[0],
+          // Prepare similar invoices context
+          const similarInvoicesData = similarClientInvoices.slice(0, 50).map(inv => ({
+            items: inv.items.map(i => i.productName)
+          }));
+
+          const [refillResult, insightsResult] = await Promise.all([
+            getSmartRefill({
+              clientName: client.name,
+              clientProfile: JSON.stringify(client),
+              purchaseHistory: purchaseHistory,
+              currentDate: new Date().toISOString().split('T')[0],
+            }),
+            getSalesInsights({
+              client: JSON.stringify(client),
+              invoices: JSON.stringify(invoices),
+              allProducts: JSON.stringify(products.map(p => ({ name: p.name, category: p.category }))),
+              similarClientInvoices: JSON.stringify(similarInvoicesData)
+            })
+          ]);
+
+          setRefillOpportunities(refillResult.refillCandidates);
+
+          // Merge SmartRefill general suggestions with SalesInsights
+          const smartSuggestions = refillResult.generalSuggestions || [];
+          const expertInsights = insightsResult.insights.map(item => {
+            const text = item.text || item as unknown as string; // Handle legacy string or new object
+            const id = item.id || `legacy-${Math.random()}`;
+            const completed = item.completed || false;
+
+            // Heuristic to guess type from emoji
+            let type = 'STRATEGY';
+            if (text.includes('🛍️') || text.includes('🛒')) type = 'CROSS_SELL';
+            if (text.includes('🎁') || text.includes('🎂') || text.includes('🎉')) type = 'RELATIONSHIP';
+            if (text.includes('🗓️') || text.includes('⏰')) type = 'CONSISTENCY';
+
+            return {
+              id,
+              type,
+              title: 'Consejo Experto',
+              description: text,
+              completed
+            };
           });
 
-          setRefillOpportunities(result.refillCandidates);
-          logAnalyticsEvent('ai_refills_viewed', { client_id: id });
+          setGeneralSuggestions([...smartSuggestions, ...expertInsights]);
+          logAnalyticsEvent('ai_insights_viewed', { client_id: id });
         } catch (error) {
-          console.error("Error fetching smart refills:", error);
+          console.error("Error fetching AI insights:", error);
           setRefillOpportunities([]);
+          setGeneralSuggestions([]);
         } finally {
           setInsightsLoading(false);
         }
       };
-      fetchRefills();
+      fetchAiData();
     }
-  }, [loading, client, invoices, refillOpportunities, id, canSeeAiInsights]);
+  }, [loading, client, invoices, refillOpportunities, id, canSeeAiInsights, products, similarClientInvoices]);
 
-  const handleGenerateMessage = async (productName: string) => {
+  const handleGenerateMessage = async (context: string, intent: 'REFILL' | 'CROSS_SELL' | 'BIRTHDAY' | 'GENERAL' | 'FOLLOW_UP' = 'REFILL') => {
     if (!client) return;
     setIsMessageDialogOpen(true);
     setMessageLoading(true);
@@ -187,7 +234,8 @@ export default function ClientDetailPage() {
     try {
       const result = await getWhatsAppMessage({
         clientName: client.name,
-        productsToRefill: [productName],
+        intent: intent,
+        context: context,
         tone: 'Casual'
       });
       setMessageDraft(result.message);
@@ -196,6 +244,25 @@ export default function ClientDetailPage() {
       setMessageDraft("Error al generar el mensaje. Intenta de nuevo.");
     } finally {
       setMessageLoading(false);
+    }
+  };
+
+  const handleToggleComplete = async (suggestion: any) => {
+    if (!suggestion.id || !client) return;
+
+    // Optimistic update
+    setGeneralSuggestions(prev => prev?.map(s =>
+      s === suggestion ? { ...s, completed: !s.completed } : s
+    ) || []);
+
+    try {
+      await toggleInsightCompletion(client.id, suggestion.id);
+    } catch (error) {
+      console.error("Failed to toggle completion", error);
+      // Revert on failure
+      setGeneralSuggestions(prev => prev?.map(s =>
+        s.id === suggestion.id ? { ...s, completed: !s.completed } : s
+      ) || []);
     }
   };
 
@@ -628,6 +695,23 @@ export default function ClientDetailPage() {
     )
   }
 
+  if (errorType === 'permission_denied') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
+        <div className="p-4 rounded-full bg-red-100 text-red-600">
+          <Eye className="w-12 h-12" />
+        </div>
+        <h1 className="text-2xl font-bold">Acceso Denegado</h1>
+        <p className="text-muted-foreground max-w-md">
+          No tienes permisos para ver este cliente. Es posible que pertenezca a otro usuario o que tu sesión haya expirado.
+        </p>
+        <Button variant="outline" asChild>
+          <Link href="/dashboard/clients">Volver a mis clientes</Link>
+        </Button>
+      </div>
+    );
+  }
+
   if (!client) {
     return notFound();
   }
@@ -654,7 +738,10 @@ export default function ClientDetailPage() {
         <div className="grid auto-rows-max gap-8 lg:col-span-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Recordatorios</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Recordatorios
+              </CardTitle>
               <Button size="sm" variant="outline" onClick={handleAddNewReminderClick}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Agregar
@@ -742,7 +829,10 @@ export default function ClientDetailPage() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Productos Vendidos y Seguimiento</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <ShoppingBag className="h-5 w-5" />
+                Productos Vendidos y Seguimiento
+              </CardTitle>
               <CardDescription>
                 Un historial de los productos comprados por el cliente y las fechas de seguimiento para reposición.
               </CardDescription>
@@ -835,7 +925,10 @@ export default function ClientDetailPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Registro de Pagos</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Registro de Pagos
+              </CardTitle>
               <Button size="sm" onClick={() => setIsPaymentDialogOpen(true)} disabled={pendingInvoicesForPayment.length === 0}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Agregar Pago
@@ -933,7 +1026,10 @@ export default function ClientDetailPage() {
             <Card>
               <AccordionItem value="contact-info" className="border-b-0">
                 <AccordionTrigger className="p-6 text-left hover:no-underline w-full">
-                  <CardTitle>Información de Contacto</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    Información de Contacto
+                  </CardTitle>
                 </AccordionTrigger>
                 <AccordionContent>
                   <CardContent className="grid gap-4 pt-0">
@@ -988,7 +1084,10 @@ export default function ClientDetailPage() {
               <AccordionItem value="financial-summary" className="border-b-0">
                 <AccordionTrigger className="p-6 text-left hover:no-underline w-full">
                   <div className="text-left">
-                    <CardTitle>Resumen Financiero</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <DollarSign className="h-5 w-5" />
+                      Resumen Financiero
+                    </CardTitle>
                     <CardDescription className="mt-1.5">Desglose del estado de cuenta.</CardDescription>
                   </div>
                 </AccordionTrigger>
@@ -1057,31 +1156,39 @@ export default function ClientDetailPage() {
               </AccordionItem>
             </Card>
             {canSeeAiInsights && (
-              <Card className="border-blue-200">
+              <Card>
                 <AccordionItem value="ai-insights" className="border-b-0">
                   <AccordionTrigger className="p-6 text-left hover:no-underline w-full">
                     <div className="text-left">
-                      <CardTitle className="flex items-center gap-2 text-blue-800">
-                        <Sparkles className="h-5 w-5 text-blue-600" />
-                        💎 Oportunidades de Recompra (Amway)
+                      <CardTitle className="flex items-center gap-2">
+                        <Sparkles className="h-5 w-5" />
+                        Sugerencias de IA
                       </CardTitle>
-                      <CardDescription className="mt-1.5 text-blue-600">
-                        Productos que este cliente necesita reponer pronto.
+                      <CardDescription className="mt-1.5">
+                        Oportunidades de venta y consejos estratégicos.
                       </CardDescription>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
                     <CardContent className="space-y-4 pt-0">
                       {insightsLoading ? (
-                        <div className="space-y-2">
-                          <Skeleton className="h-16 w-full" />
-                          <Skeleton className="h-16 w-full" />
+                        <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                          <div className="relative">
+                            <div className="absolute inset-0 bg-blue-100 rounded-full animate-ping opacity-75"></div>
+                            <div className="relative bg-white p-3 rounded-full border border-blue-100 shadow-sm">
+                              <Sparkles className="h-6 w-6 text-blue-600 animate-pulse" />
+                            </div>
+                          </div>
+                          <div className="text-center space-y-1">
+                            <p className="font-medium text-sm text-gray-700">Analizando historial...</p>
+                            <p className="text-xs text-muted-foreground">Buscando oportunidades de crecimiento</p>
+                          </div>
                         </div>
                       ) : (
-                        refillOpportunities && refillOpportunities.length > 0 ? (
+                        (refillOpportunities && refillOpportunities.length > 0) || (generalSuggestions && generalSuggestions.length > 0) ? (
                           <div className="grid gap-3">
-                            {refillOpportunities.map((opportunity, index) => (
-                              <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg border bg-white shadow-sm gap-4">
+                            {refillOpportunities?.map((opportunity, index) => (
+                              <div key={`refill-${index}`} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg border bg-white shadow-sm gap-4">
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-2">
                                     <span className="font-semibold text-lg">{opportunity.productName}</span>
@@ -1094,19 +1201,56 @@ export default function ClientDetailPage() {
                                   </p>
                                 </div>
                                 <Button
-                                  onClick={() => handleGenerateMessage(opportunity.productName)}
-                                  className="bg-green-600 hover:bg-green-700 text-white shrink-0"
+                                  onClick={() => handleGenerateMessage(opportunity.productName, 'REFILL')}
+                                  className="shrink-0"
                                 >
-                                  <MessageSquare className="w-4 h-4 mr-2" />
-                                  Generar Mensaje
+                                  <MessageSquare className="h-4 w-4 mr-2" />
+                                  Mensaje
                                 </Button>
+                              </div>
+                            ))}
+
+                            {generalSuggestions?.map((suggestion, index) => (
+                              <div key={`sugg-${index}`} className="flex flex-col p-4 rounded-lg border bg-blue-50/50 border-blue-100 shadow-sm gap-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200">
+                                      {suggestion.type === 'CROSS_SELL' ? '🛍️ Sugerencia' :
+                                        suggestion.type === 'RELATIONSHIP' ? '🤝 Relación' : '💡 Estrategia'}
+                                    </Badge>
+                                    <span className="font-semibold">{suggestion.title}</span>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                                    onClick={() => handleGenerateMessage(suggestion.description, suggestion.type === 'CROSS_SELL' ? 'CROSS_SELL' : 'GENERAL')}
+                                  >
+                                    <MessageSquare className="h-4 w-4 mr-2" />
+                                    Redactar
+                                  </Button>
+                                  {suggestion.id && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleToggleComplete(suggestion)}
+                                      className={suggestion.completed ? "text-green-600" : "text-gray-400"}
+                                      title={suggestion.completed ? "Marcar como pendiente" : "Marcar como completada"}
+                                    >
+                                      {suggestion.completed ? <CheckCircle2 className="h-5 w-5" /> : <div className="h-4 w-4 border-2 rounded-full border-current" />}
+                                    </Button>
+                                  )}
+                                </div>
+                                <p className={`text-sm text-muted-foreground ${suggestion.completed ? 'line-through opacity-50' : ''}`}>
+                                  {suggestion.description}
+                                </p>
                               </div>
                             ))}
                           </div>
                         ) : (
                           <div className="text-center py-8 text-muted-foreground flex flex-col items-center gap-2">
                             <CheckCircle2 className="w-8 h-8 text-green-500" />
-                            <p>¡Todo al día! No hay recompras pendientes por ahora.</p>
+                            <p>El modelo está analizando nuevos patrones. Vuelve pronto para más consejos.</p>
                           </div>
                         )
                       )}
@@ -1119,7 +1263,10 @@ export default function ClientDetailPage() {
               <AccordionItem value="follow-up" className="border-b-0">
                 <AccordionTrigger className="p-6 text-left hover:no-underline w-full">
                   <div className="text-left">
-                    <CardTitle>Seguimiento y Crecimiento</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5" />
+                      Seguimiento y Crecimiento
+                    </CardTitle>
                     <CardDescription className="mt-1.5">Checklist de interacciones clave.</CardDescription>
                   </div>
                 </AccordionTrigger>
@@ -1144,9 +1291,9 @@ export default function ClientDetailPage() {
                 </AccordionContent>
               </AccordionItem>
             </Card>
-          </Accordion>
-        </div>
-      </div>
+          </Accordion >
+        </div >
+      </div >
 
       <Dialog open={isMessageDialogOpen} onOpenChange={setIsMessageDialogOpen}>
         <DialogContent className="sm:max-w-md">

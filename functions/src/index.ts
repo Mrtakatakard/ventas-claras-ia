@@ -12,7 +12,7 @@
 
 // Exporting specific functions for better organization
 export * as team from './team/invite';
-// export * as invoicing from "./invoicing/receivables"; // Deprecated
+export * from "./invoicing/receivables";
 // export * as deleteInvoice from "./invoicing/deleteInvoice"; // Deprecated
 export * as general from './general/contact';
 export * as clientController from './controllers/clientController';
