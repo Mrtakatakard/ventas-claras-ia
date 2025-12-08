@@ -6,8 +6,8 @@ import { z } from 'zod';
 // Input Schema
 const WhatsAppGeneratorInputSchema = z.object({
     clientName: z.string(),
-    intent: z.enum(['REFILL', 'CROSS_SELL', 'BIRTHDAY', 'GENERAL', 'FOLLOW_UP']).describe("The purpose of the message."),
-    context: z.string().describe("Details: product names, specific suggestion text, or context."),
+    intent: z.enum(['REFILL', 'CROSS_SELL', 'BIRTHDAY', 'GENERAL', 'FOLLOW_UP', 'SEND_INVOICE', 'SEND_QUOTE']).describe("The purpose of the message."),
+    context: z.string().describe("Details: product names, specific suggestion text, context, or invoice/quote number."),
     tone: z.enum(['Casual', 'Formal', 'Enthusiastic']).default('Casual'),
 });
 
@@ -44,6 +44,8 @@ const whatsAppGeneratorPrompt = ai.definePrompt({
     - CROSS_SELL: "Como usas productos de belleza/hogar, pensé que te gustaría probar {{context}}."
     - BIRTHDAY: "¡Feliz Cumpleaños! 🎉 Espero que la pases súper bien."
     - FOLLOW_UP: "Hola! Solo pasando para ver cómo te va con {{context}}."
+    - SEND_INVOICE: "Aquí te comparto tu factura #{{context}}. Avísame cualquier duda."
+    - SEND_QUOTE: "Adjunto la cotización #{{context}} que preparamos. Quedo atento a tus comentarios."
     
     End with a simple engaging question if appropriate.
   `,

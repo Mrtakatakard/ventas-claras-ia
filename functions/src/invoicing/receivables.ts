@@ -21,16 +21,17 @@ export const getAccountsReceivable = onCall(async (request) => {
         // 2. Query for invoices with a balance due
         const invoicesRef = db.collection('invoices');
         const q = invoicesRef
-            .where('userId', '==', uid)
-            .where('balanceDue', '>', 0);
+            .where('userId', '==', uid);
 
         const querySnapshot = await q.get();
 
         // 3. Map the results
-        const receivableInvoices = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-        }));
+        const receivableInvoices = querySnapshot.docs
+            .map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+            } as any)) // Type assertion for cleaner code
+            .filter((invoice) => invoice.balanceDue > 0);
 
         logger.info(`Found ${receivableInvoices.length} receivable invoices for user: ${uid}`);
 

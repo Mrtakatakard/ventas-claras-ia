@@ -184,7 +184,7 @@ export const deleteCategory = async (id: string) => {
 
 
 // Products
-const uploadFile = async (file: File, path: string): Promise<string> => {
+export const uploadFile = async (file: File, path: string): Promise<string> => {
   const storageRef = ref(storage, path);
   const snapshot = await uploadBytes(storageRef, file);
   const downloadURL = await getDownloadURL(snapshot.ref);

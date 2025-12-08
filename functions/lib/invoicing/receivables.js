@@ -5,9 +5,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getAccountsReceivable = void 0;
 const https_1 = require("firebase-functions/v2/https");
-const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
-const db = admin.firestore();
+const firebase_1 = require("../config/firebase");
 exports.getAccountsReceivable = (0, https_1.onCall)(async (request) => {
     // 1. Authentication check
     if (!request.auth) {
@@ -17,13 +16,14 @@ exports.getAccountsReceivable = (0, https_1.onCall)(async (request) => {
     logger.info(`Fetching accounts receivable for user: ${uid}`);
     try {
         // 2. Query for invoices with a balance due
-        const invoicesRef = db.collection('invoices');
+        const invoicesRef = firebase_1.db.collection('invoices');
         const q = invoicesRef
-            .where('userId', '==', uid)
-            .where('balanceDue', '>', 0);
+            .where('userId', '==', uid);
         const querySnapshot = await q.get();
         // 3. Map the results
-        const receivableInvoices = querySnapshot.docs.map((doc) => (Object.assign({ id: doc.id }, doc.data())));
+        const receivableInvoices = querySnapshot.docs
+            .map((doc) => (Object.assign({ id: doc.id }, doc.data()))) // Type assertion for cleaner code
+            .filter((invoice) => invoice.balanceDue > 0);
         logger.info(`Found ${receivableInvoices.length} receivable invoices for user: ${uid}`);
         return { invoices: receivableInvoices };
     }

@@ -10,9 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, Printer, Loader2, CreditCard, Clipboard, Info } from "lucide-react";
-import { getInvoice } from '@/lib/firebase/service';
-import type { Invoice, Payment, InvoiceItem } from '@/lib/types';
+import { Download, Printer, Loader2, CreditCard, Clipboard, Info, MessageSquare } from "lucide-react";
+import { WhatsAppMessageDialog } from '@/components/whatsapp-message-dialog';
+import { getInvoice, getClient } from '@/lib/firebase/service';
+import { getWhatsAppMessage } from '@/ai/flows/whatsapp-generator-flow';
+import type { Invoice, Payment, InvoiceItem, Client } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddPaymentForm } from '@/components/add-payment-form';
 import { useAuth } from '@/lib/firebase/hooks';
@@ -30,6 +32,12 @@ export default function InvoiceDetailPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
+  // WhatsApp State
+  const [client, setClient] = useState<Client | null>(null);
+  const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
+  const [messageDraft, setMessageDraft] = useState('');
+  const [messageLoading, setMessageLoading] = useState(false);
+
   const fetchInvoice = useCallback(async () => {
     setLoading(true);
     const inv = await getInvoice(id);
@@ -37,6 +45,13 @@ export default function InvoiceDetailPage() {
       notFound();
     }
     setInvoice(inv);
+
+    // Fetch client for phone number
+    if (inv.clientId) {
+      const clientData = await getClient(inv.clientId);
+      setClient(clientData);
+    }
+
     setLoading(false);
   }, [id, userId]);
 
@@ -53,6 +68,28 @@ export default function InvoiceDetailPage() {
   const handlePaymentSuccess = () => {
     setIsPaymentDialogOpen(false);
     fetchInvoice();
+  };
+
+  const handleGenerateMessage = async () => {
+    if (!invoice || !client) return;
+    setIsMessageDialogOpen(true);
+    setMessageLoading(true);
+    setMessageDraft("Generando mensaje de factura... 📠");
+
+    try {
+      const result = await getWhatsAppMessage({
+        clientName: client.name,
+        intent: 'SEND_INVOICE',
+        context: invoice.invoiceNumber,
+        tone: 'Casual'
+      });
+      setMessageDraft(result.message);
+    } catch (error) {
+      console.error("Error generating message", error);
+      setMessageDraft(`Hola ${client.name}, aquí te envío la factura #${invoice.invoiceNumber}. Saludos!`);
+    } finally {
+      setMessageLoading(false);
+    }
   };
 
   const handleDownloadPdf = async () => {
@@ -401,8 +438,22 @@ export default function InvoiceDetailPage() {
               />
             </DialogContent>
           </Dialog>
+          <Button variant="outline" onClick={handleGenerateMessage} className="text-green-600 border-green-600 hover:bg-green-50">
+            <MessageSquare className="mr-2 h-4 w-4" />
+            WhatsApp
+          </Button>
+          <WhatsAppMessageDialog
+            open={isMessageDialogOpen}
+            onOpenChange={setIsMessageDialogOpen}
+            loading={messageLoading}
+            message={messageDraft}
+            onMessageChange={setMessageDraft}
+            clientPhone={client?.phone}
+            contextDescription="Mensaje sugerido para enviar esta factura."
+          />
         </div>
       </PageHeader>
+
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 flex flex-col gap-6">

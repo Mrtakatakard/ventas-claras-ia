@@ -43,21 +43,26 @@ export function AddCategoryForm({ onSuccess, category }: AddCategoryFormProps) {
       return;
     }
 
-    const dataToSave: Omit<Category, 'id' | 'createdAt' | 'isActive'> = {
-      name: values.name,
-      description: values.description || '',
-      userId: userId,
-    }
-
     try {
       if (isEditing && category) {
+        const dataToSave: Partial<Category> = {
+          name: values.name,
+          description: values.description || '',
+          userId: category.userId, // Preserve original owner
+          isActive: true, // Ensure it stays active
+        }
         await updateCategory(category.id, dataToSave);
         toast({
           title: "Categoría Actualizada",
           description: `La categoría ${values.name} ha sido actualizada exitosamente.`,
         });
       } else {
-        await addCategory(dataToSave, userId);
+        const dataToCreate = {
+          name: values.name,
+          description: values.description || '',
+          // addCategory handles userId, createdAt, and isActive automatically
+        };
+        await addCategory(dataToCreate, userId);
         toast({
           title: "Categoría Agregada",
           description: `La categoría ${values.name} ha sido agregada exitosamente.`,

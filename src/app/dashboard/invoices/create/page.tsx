@@ -33,7 +33,8 @@ type InvoiceItemState = {
     numberOfPeople?: number;
 };
 
-const ITBIS_RATE = 0.18;
+// Default 18%, but users can switch
+const DEFAULT_ITBIS_RATE = 0.18;
 
 export default function CreateInvoicePage() {
     const router = useRouter();
@@ -53,6 +54,7 @@ export default function CreateInvoicePage() {
     const [dueDate, setDueDate] = useState('');
     const [items, setItems] = useState<InvoiceItemState[]>([{ id: 1, productId: '', quantity: 1, discount: 0, numberOfPeople: 1 }]);
     const [includeITBIS, setIncludeITBIS] = useState(true);
+    const [itbisRate, setItbisRate] = useState(DEFAULT_ITBIS_RATE); // State for rate selection
     const [useCostPrice, setUseCostPrice] = useState(false);
 
     const getProductStock = (product: Product) => {
@@ -145,7 +147,7 @@ export default function CreateInvoicePage() {
         });
 
         const currentNetSubtotal = grossSubtotal - currentDiscountTotal;
-        const currentItbis = includeITBIS ? currentTaxableSubtotal * ITBIS_RATE : 0;
+        const currentItbis = includeITBIS ? currentTaxableSubtotal * itbisRate : 0;
         const currentTotal = currentNetSubtotal + currentItbis;
 
         return {
@@ -156,7 +158,7 @@ export default function CreateInvoicePage() {
             itbis: currentItbis,
             total: currentTotal
         };
-    }, [items, products, includeITBIS, useCostPrice]);
+    }, [items, products, includeITBIS, itbisRate, useCostPrice]);
 
 
     const handleAddItem = () => setItems([...items, { id: Date.now(), productId: '', quantity: 1, discount: 0, numberOfPeople: 1 }]);
@@ -324,7 +326,7 @@ export default function CreateInvoicePage() {
         });
 
         const newNetSubtotal = grossSubtotal - currentDiscountTotal;
-        const newItbis = includeITBIS ? currentTaxableSubtotal * ITBIS_RATE : 0;
+        const newItbis = includeITBIS ? currentTaxableSubtotal * itbisRate : 0;
         const newTotal = newNetSubtotal + newItbis;
 
         const newInvoice: Omit<Invoice, 'id'> = {
@@ -345,6 +347,7 @@ export default function CreateInvoicePage() {
             payments: [],
             balanceDue: newTotal,
             includeITBIS: includeITBIS,
+            itbisRate: itbisRate,
             isActive: true,
             userId,
             createdAt: new Date(),
@@ -499,12 +502,28 @@ export default function CreateInvoicePage() {
                                         </div>
                                         <div className="flex flex-row items-center justify-between rounded-lg border p-3">
                                             <div className="space-y-0.5">
-                                                <Label htmlFor="include-itbis">Incluir ITBIS (18%)</Label>
+                                                <Label htmlFor="include-itbis">Incluir ITBIS</Label>
                                                 <p className="text-xs text-muted-foreground">
                                                     Añadir el impuesto al total de la factura.
                                                 </p>
                                             </div>
-                                            <Switch id="include-itbis" checked={includeITBIS} onCheckedChange={setIncludeITBIS} aria-label="Incluir ITBIS" />
+                                            <div className="flex items-center gap-2">
+                                                {includeITBIS && (
+                                                    <Select
+                                                        value={itbisRate.toString()}
+                                                        onValueChange={(v) => setItbisRate(parseFloat(v))}
+                                                    >
+                                                        <SelectTrigger className="w-[80px] h-8">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="0.18">18%</SelectItem>
+                                                            <SelectItem value="0.16">16%</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
+                                                <Switch id="include-itbis" checked={includeITBIS} onCheckedChange={setIncludeITBIS} aria-label="Incluir ITBIS" />
+                                            </div>
                                         </div>
                                     </CardContent>
                                 </AccordionContent>
@@ -589,7 +608,7 @@ export default function CreateInvoicePage() {
                                             <span>{formatCurrency(taxableSubtotal, invoiceCurrency)}</span>
                                         </div>
                                     )}
-                                    <div className="flex justify-between"><span className="text-muted-foreground">ITBIS (18%)</span><span>{formatCurrency(itbis, invoiceCurrency)}</span></div>
+                                    <div className="flex justify-between"><span className="text-muted-foreground">ITBIS ({(itbisRate * 100).toFixed(0)}%)</span><span>{formatCurrency(itbis, invoiceCurrency)}</span></div>
                                 </>
                             )}
                             <Separator />

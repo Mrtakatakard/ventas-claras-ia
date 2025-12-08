@@ -123,6 +123,7 @@ export interface Quote {
     currency: 'DOP' | 'USD';
     notes?: string;
     includeITBIS?: boolean;
+    itbisRate?: number;
     userId: string;
     createdAt: Date;
     isActive: boolean;
@@ -148,6 +149,7 @@ export interface Invoice {
     currency: 'DOP' | 'USD';
     quoteId?: string;
     includeITBIS?: boolean;
+    itbisRate?: number;
     userId: string;
     createdAt: Date;
     isActive: boolean;

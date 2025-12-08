@@ -444,7 +444,7 @@ export default function EditQuotePage() {
                                     <CardContent className="pt-0 grid gap-4">
                                         <div className="flex flex-row items-center justify-between rounded-lg border p-3">
                                             <div className="space-y-0.5">
-                                                <Label htmlFor="include-itbis">Incluir ITBIS (18%)</Label>
+                                                <Label htmlFor="include-itbis">Incluir ITBIS</Label>
                                                 <p className="text-xs text-muted-foreground">
                                                     Añadir el impuesto al total de la cotización.
                                                 </p>

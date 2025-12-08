@@ -9,10 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, Printer, Loader2, FileText } from "lucide-react";
-import { getQuote } from '@/lib/firebase/service';
+import { Download, Printer, Loader2, FileText, MessageSquare } from "lucide-react";
+import { WhatsAppMessageDialog } from '@/components/whatsapp-message-dialog';
+import { getQuote, getClient } from '@/lib/firebase/service';
 import { quoteApi } from '@/lib/api/quoteApi';
-import type { Quote, InvoiceItem } from '@/lib/types';
+import { getWhatsAppMessage } from '@/ai/flows/whatsapp-generator-flow';
+import type { Quote, InvoiceItem, Client } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/firebase/hooks';
@@ -34,6 +36,12 @@ export default function QuoteDetailPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
 
+  // WhatsApp State
+  const [client, setClient] = useState<Client | null>(null);
+  const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
+  const [messageDraft, setMessageDraft] = useState('');
+  const [messageLoading, setMessageLoading] = useState(false);
+
   useEffect(() => {
     if (!id) return;
     const fetchQuote = async () => {
@@ -43,6 +51,13 @@ export default function QuoteDetailPage() {
         notFound();
       }
       setQuote(inv);
+
+      // Fetch client for phone number
+      if (inv.clientId) {
+        const clientData = await getClient(inv.clientId);
+        setClient(clientData);
+      }
+
       setLoading(false);
     };
     fetchQuote();
@@ -70,6 +85,28 @@ export default function QuoteDetailPage() {
       setIsConverting(false);
     }
   }
+
+  const handleGenerateMessage = async () => {
+    if (!quote || !client) return;
+    setIsMessageDialogOpen(true);
+    setMessageLoading(true);
+    setMessageDraft("Generando mensaje de cotización... 📝");
+
+    try {
+      const result = await getWhatsAppMessage({
+        clientName: client.name,
+        intent: 'SEND_QUOTE',
+        context: quote.quoteNumber,
+        tone: 'Casual'
+      });
+      setMessageDraft(result.message);
+    } catch (error) {
+      console.error("Error generating message", error);
+      setMessageDraft(`Hola ${client.name}, aquí te envío la cotización #${quote.quoteNumber}. Quedo atento.`);
+    } finally {
+      setMessageLoading(false);
+    }
+  };
 
   const handleDownloadPdf = async () => {
     if (!quote) return;
@@ -285,7 +322,21 @@ export default function QuoteDetailPage() {
               <FileText className="mr-2 h-4 w-4" />
             )}
             Convertir a Factura
+            Convertir a Factura
           </Button>
+          <Button variant="outline" onClick={handleGenerateMessage} className="text-green-600 border-green-600 hover:bg-green-50">
+            <MessageSquare className="mr-2 h-4 w-4" />
+            WhatsApp
+          </Button>
+          <WhatsAppMessageDialog
+            open={isMessageDialogOpen}
+            onOpenChange={setIsMessageDialogOpen}
+            loading={messageLoading}
+            message={messageDraft}
+            onMessageChange={setMessageDraft}
+            clientPhone={client?.phone}
+            contextDescription="Mensaje sugerido para enviar esta cotización."
+          />
         </div>
       </PageHeader>
 

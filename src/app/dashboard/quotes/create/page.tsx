@@ -33,7 +33,8 @@ type QuoteItemState = {
     numberOfPeople?: number;
 };
 
-const ITBIS_RATE = 0.18;
+// Default 18%, but users can switch
+const DEFAULT_ITBIS_RATE = 0.18;
 
 export default function CreateQuotePage() {
     const router = useRouter();
@@ -52,6 +53,7 @@ export default function CreateQuotePage() {
     const [dueDate, setDueDate] = useState('');
     const [items, setItems] = useState<QuoteItemState[]>([{ id: 1, productId: '', quantity: 1, discount: 0, numberOfPeople: 1 }]);
     const [includeITBIS, setIncludeITBIS] = useState(true);
+    const [itbisRate, setItbisRate] = useState(DEFAULT_ITBIS_RATE);
 
     const loading = isLoadingClients || isLoadingClientTypes || isLoadingProducts;
 
@@ -112,7 +114,7 @@ export default function CreateQuotePage() {
         });
 
         const currentNetSubtotal = grossSubtotal - currentDiscountTotal;
-        const currentItbis = includeITBIS ? currentTaxableSubtotal * ITBIS_RATE : 0;
+        const currentItbis = includeITBIS ? currentTaxableSubtotal * itbisRate : 0;
         const currentTotal = currentNetSubtotal + currentItbis;
 
         return {
@@ -123,7 +125,7 @@ export default function CreateQuotePage() {
             itbis: currentItbis,
             total: currentTotal
         };
-    }, [items, products, includeITBIS]);
+    }, [items, products, includeITBIS, itbisRate]);
 
 
     const handleAddItem = () => setItems([...items, { id: Date.now(), productId: '', quantity: 1, discount: 0, numberOfPeople: 1 }]);
@@ -244,7 +246,7 @@ export default function CreateQuotePage() {
         });
 
         const newNetSubtotal = grossSubtotal - currentDiscountTotal;
-        const newItbis = includeITBIS ? currentTaxableSubtotal * ITBIS_RATE : 0;
+        const newItbis = includeITBIS ? currentTaxableSubtotal * itbisRate : 0;
         const newTotal = newNetSubtotal + newItbis;
 
         const newQuote: Omit<Quote, 'id' | 'createdAt' | 'isActive' | 'quoteNumber'> = {
@@ -262,6 +264,7 @@ export default function CreateQuotePage() {
             status: 'borrador',
             currency: quoteCurrency,
             includeITBIS: includeITBIS,
+            itbisRate: itbisRate,
             userId,
         };
 
@@ -395,12 +398,28 @@ export default function CreateQuotePage() {
                                     <CardContent className="pt-0 grid gap-4">
                                         <div className="flex flex-row items-center justify-between rounded-lg border p-3">
                                             <div className="space-y-0.5">
-                                                <Label htmlFor="include-itbis">Incluir ITBIS (18%)</Label>
+                                                <Label htmlFor="include-itbis">Incluir ITBIS</Label>
                                                 <p className="text-xs text-muted-foreground">
                                                     Añadir el impuesto al total de la cotización.
                                                 </p>
                                             </div>
-                                            <Switch id="include-itbis" checked={includeITBIS} onCheckedChange={setIncludeITBIS} aria-label="Incluir ITBIS" />
+                                            <div className="flex items-center gap-2">
+                                                {includeITBIS && (
+                                                    <Select
+                                                        value={itbisRate.toString()}
+                                                        onValueChange={(v) => setItbisRate(parseFloat(v))}
+                                                    >
+                                                        <SelectTrigger className="w-[80px] h-8">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="0.18">18%</SelectItem>
+                                                            <SelectItem value="0.16">16%</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
+                                                <Switch id="include-itbis" checked={includeITBIS} onCheckedChange={setIncludeITBIS} aria-label="Incluir ITBIS" />
+                                            </div>
                                         </div>
                                     </CardContent>
                                 </AccordionContent>
@@ -485,7 +504,7 @@ export default function CreateQuotePage() {
                                             <span>{formatCurrency(taxableSubtotal, quoteCurrency)}</span>
                                         </div>
                                     )}
-                                    <div className="flex justify-between"><span className="text-muted-foreground">ITBIS (18%)</span><span>{formatCurrency(itbis, quoteCurrency)}</span></div>
+                                    <div className="flex justify-between"><span className="text-muted-foreground">ITBIS ({(itbisRate * 100).toFixed(0)}%)</span><span>{formatCurrency(itbis, quoteCurrency)}</span></div>
                                 </>
                             )}
                             <Separator />

@@ -3,13 +3,27 @@
  * @fileoverview Main entry point for Firebase Functions.
  * This file should only import and export functions from other modules.
  */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.quoteController = exports.invoiceController = exports.productController = exports.clientController = exports.general = exports.team = void 0;
 // import { app, db } from "./config/firebase";
 // export { app, db };
 // Exporting specific functions for better organization
 exports.team = require("./team/invite");
-// export * as invoicing from "./invoicing/receivables"; // Deprecated
+__exportStar(require("./invoicing/receivables"), exports);
 // export * as deleteInvoice from "./invoicing/deleteInvoice"; // Deprecated
 exports.general = require("./general/contact");
 exports.clientController = require("./controllers/clientController");

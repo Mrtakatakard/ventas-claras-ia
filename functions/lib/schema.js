@@ -49,6 +49,7 @@ exports.createInvoiceSchema = zod_1.z.object({
     currency: zod_1.z.enum(['DOP', 'USD']),
     quoteId: zod_1.z.string().optional(),
     includeITBIS: zod_1.z.boolean().optional(),
+    itbisRate: zod_1.z.number().optional(),
 });
 exports.updateInvoiceSchema = exports.createInvoiceSchema.partial().extend({
     id: zod_1.z.string(),
@@ -76,6 +77,7 @@ exports.createQuoteSchema = zod_1.z.object({
     currency: zod_1.z.enum(['DOP', 'USD']),
     notes: zod_1.z.string().optional(),
     includeITBIS: zod_1.z.boolean().optional(),
+    itbisRate: zod_1.z.number().optional(),
 });
 exports.updateQuoteSchema = exports.createQuoteSchema.partial().extend({
     id: zod_1.z.string(),

@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "@/lib/firebase/hooks"
+import { uploadFile } from "@/lib/firebase/service"
 import { productApi } from "@/lib/api/productApi"
 import React, { useState } from "react"
 import type { Product, Category, ProductBatch } from "@/lib/types"
@@ -77,9 +78,12 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
 
   React.useEffect(() => {
     if (!isEditing && fields.length === 0) {
-      append({ cost: 0, price: 0, stock: 0, expirationDate: '' });
+      append({ cost: '' as any, price: '' as any, stock: '' as any, expirationDate: '' });
     }
   }, [isEditing, fields.length, append]);
+
+
+
 
 
   const [imagePreview, setImagePreview] = useState<string | null>(product?.imageUrl || null);
@@ -101,13 +105,31 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
       id: batch.id || `batch-${Date.now()}-${Math.random()}`
     }));
 
+    let imageUrl = product?.imageUrl || undefined;
+
+    if (values.image instanceof File) {
+      try {
+        const path = `products/${userId}/${Date.now()}_${values.image.name}`;
+        imageUrl = await uploadFile(values.image, path);
+      } catch (uploadError) {
+        console.error("Error uploading image:", uploadError);
+        toast({ title: "Error de imagen", description: "No se pudo subir la imagen del producto.", variant: "destructive" });
+        return;
+      }
+    } else if (typeof values.image === 'string') {
+      imageUrl = values.image;
+    } else if (values.image === null || values.image === undefined || values.image === '') {
+      imageUrl = undefined;
+    }
+
+    const { image, ...valuesWithoutImage } = values;
+
     const productData = {
-      ...values,
+      ...valuesWithoutImage,
       description: values.description || '',
       batches: batchesWithIds,
-      image: values.image, // This can be a File, a URL string, or undefined
+      imageUrl: imageUrl,
       restockTimeDays: values.restockTimeDays === undefined ? null : values.restockTimeDays,
-      // Computed fields from batches
       userId: userId,
       price: batchesWithIds[0]?.price || 0,
       cost: batchesWithIds[0]?.cost,
@@ -197,20 +219,20 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm font-medium">Stock Total: <span className="font-bold">{totalStock}</span></span>
-              <Button type="button" size="sm" variant="outline" onClick={() => append({ cost: 0, price: 0, stock: 0, expirationDate: '' })}><PlusCircle className="mr-2 h-4 w-4" />Agregar Lote</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => append({ cost: '' as any, price: '' as any, stock: '' as any, expirationDate: '' })}><PlusCircle className="mr-2 h-4 w-4" />Agregar Lote</Button>
             </div>
           </div>
           {fields.map((batchField: any, index: number) => (
             <div key={batchField.id} className="grid gap-4 p-4 border rounded-lg relative">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <FormField control={form.control} name={`batches.${index}.cost`} render={({ field }) => (
-                  <FormItem><FormLabel>Costo</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Costo</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 && !isEditing ? '' : field.value} onChange={e => field.onChange(e.target.value === '' ? '' : +e.target.value)} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name={`batches.${index}.price`} render={({ field }) => (
-                  <FormItem><FormLabel>Precio Venta</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Precio Venta</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 && !isEditing ? '' : field.value} onChange={e => field.onChange(e.target.value === '' ? '' : +e.target.value)} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name={`batches.${index}.stock`} render={({ field }) => (
-                  <FormItem><FormLabel>Stock</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Stock</FormLabel><FormControl><Input type="number" {...field} value={field.value === 0 && !isEditing ? '' : field.value} onChange={e => field.onChange(e.target.value === '' ? '' : +e.target.value)} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name={`batches.${index}.expirationDate`} render={({ field }) => (
                   <FormItem><FormLabel>Expiración</FormLabel><FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>

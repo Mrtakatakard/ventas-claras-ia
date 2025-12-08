@@ -33,7 +33,8 @@ type InvoiceItemState = {
     numberOfPeople?: number;
 };
 
-const ITBIS_RATE = 0.18;
+// Default 18%, but users can switch
+const DEFAULT_ITBIS_RATE = 0.18;
 
 export default function EditInvoicePage() {
     const router = useRouter();
@@ -57,6 +58,7 @@ export default function EditInvoicePage() {
     const [dueDate, setDueDate] = useState('');
     const [items, setItems] = useState<InvoiceItemState[]>([]);
     const [includeITBIS, setIncludeITBIS] = useState(true);
+    const [itbisRate, setItbisRate] = useState(DEFAULT_ITBIS_RATE);
     const useCostPrice = false;
 
     const getProductStock = (product: Product) => {
@@ -98,6 +100,7 @@ export default function EditInvoicePage() {
                     ...client,
                     clientTypeName: clientTypesMap.get(client.clientTypeId) || 'Sin asignar'
                 }));
+
                 setClients(clientsWithTypeName);
 
                 setProducts(productsData);
@@ -114,7 +117,10 @@ export default function EditInvoicePage() {
                     discount: item.discount || 0,
                     numberOfPeople: item.numberOfPeople || 1,
                 })));
+
+
                 setIncludeITBIS(invoiceData.includeITBIS ?? true);
+                setItbisRate(invoiceData.itbisRate ?? DEFAULT_ITBIS_RATE);
 
                 const clientForInvoice = clientsData.find(c => c.id === invoiceData.clientId);
                 const addressForInvoice = clientForInvoice?.addresses?.find(a => a.fullAddress === invoiceData.clientAddress);
@@ -175,7 +181,7 @@ export default function EditInvoicePage() {
         });
 
         const currentNetSubtotal = grossSubtotal - currentDiscountTotal;
-        const currentItbis = includeITBIS ? currentTaxableSubtotal * ITBIS_RATE : 0;
+        const currentItbis = includeITBIS ? currentTaxableSubtotal * itbisRate : 0;
         const currentTotal = currentNetSubtotal + currentItbis;
 
         return {
@@ -186,7 +192,7 @@ export default function EditInvoicePage() {
             itbis: currentItbis,
             total: currentTotal
         };
-    }, [items, products, includeITBIS]);
+    }, [items, products, includeITBIS, itbisRate]);
 
 
     const handleAddItem = () => setItems([...items, { id: Date.now(), productId: '', quantity: 1, discount: 0, numberOfPeople: 1 }]);
@@ -360,7 +366,7 @@ export default function EditInvoicePage() {
         });
 
         const newNetSubtotal = grossSubtotal - currentDiscountTotal;
-        const newItbis = includeITBIS ? currentTaxableSubtotal * ITBIS_RATE : 0;
+        const newItbis = includeITBIS ? currentTaxableSubtotal * itbisRate : 0;
         const newTotal = newNetSubtotal + newItbis;
 
         const updatedInvoiceData = {
@@ -376,7 +382,9 @@ export default function EditInvoicePage() {
             itbis: newItbis,
             total: newTotal,
             currency: invoiceCurrency,
+
             includeITBIS: includeITBIS,
+            itbisRate: itbisRate,
         };
 
         try {
@@ -508,12 +516,28 @@ export default function EditInvoicePage() {
                                     <CardContent className="pt-0 grid gap-4">
                                         <div className="flex flex-row items-center justify-between rounded-lg border p-3">
                                             <div className="space-y-0.5">
-                                                <Label htmlFor="include-itbis">Incluir ITBIS (18%)</Label>
+                                                <Label htmlFor="include-itbis">Incluir ITBIS</Label>
                                                 <p className="text-xs text-muted-foreground">
                                                     Añadir el impuesto sobre la renta al total de la factura.
                                                 </p>
                                             </div>
-                                            <Switch id="include-itbis" checked={includeITBIS} onCheckedChange={setIncludeITBIS} aria-label="Incluir ITBIS" />
+                                            <div className="flex items-center gap-2">
+                                                {includeITBIS && (
+                                                    <Select
+                                                        value={itbisRate.toString()}
+                                                        onValueChange={(v) => setItbisRate(parseFloat(v))}
+                                                    >
+                                                        <SelectTrigger className="w-[80px] h-8">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="0.18">18%</SelectItem>
+                                                            <SelectItem value="0.16">16%</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
+                                                <Switch id="include-itbis" checked={includeITBIS} onCheckedChange={setIncludeITBIS} aria-label="Incluir ITBIS" />
+                                            </div>
                                         </div>
                                     </CardContent>
                                 </AccordionContent>
@@ -606,7 +630,7 @@ export default function EditInvoicePage() {
                                             <span>{formatCurrency(taxableSubtotal, invoiceCurrency)}</span>
                                         </div>
                                     )}
-                                    <div className="flex justify-between"><span className="text-muted-foreground">ITBIS (18%)</span><span>{formatCurrency(itbis, invoiceCurrency)}</span></div>
+                                    <div className="flex justify-between"><span className="text-muted-foreground">ITBIS ({(itbisRate * 100).toFixed(0)}%)</span><span>{formatCurrency(itbis, invoiceCurrency)}</span></div>
                                 </>
                             )}
                             <Separator />

@@ -12,6 +12,7 @@ import { clientApi } from '@/lib/api/clientApi';
 import { getSmartRefill } from '@/ai/flows/smart-refill-flow';
 import { getWhatsAppMessage } from '@/ai/flows/whatsapp-generator-flow';
 import { getSalesInsights, toggleInsightCompletion } from '@/ai/flows/sales-insights-flow';
+import { WhatsAppMessageDialog } from '@/components/whatsapp-message-dialog';
 
 import { PageHeader } from '@/components/page-header';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -1295,45 +1296,14 @@ export default function ClientDetailPage() {
         </div >
       </div >
 
-      <Dialog open={isMessageDialogOpen} onOpenChange={setIsMessageDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Mensaje Sugerido 💬</DialogTitle>
-            <DialogDescription>
-              IA redactó este borrador para ti. Edítalo o envíalo así.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {messageLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Skeleton className="h-24 w-full" />
-              </div>
-            ) : (
-              <Textarea
-                value={messageDraft}
-                onChange={(e) => setMessageDraft(e.target.value)}
-                className="min-h-[150px] text-base"
-              />
-            )}
-          </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setIsMessageDialogOpen(false)}>Cancelar</Button>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <Button variant="secondary" onClick={() => copyToClipboard(messageDraft)} className="flex-1">
-                <Copy className="w-4 h-4 mr-2" />
-                Copiar
-              </Button>
-              <Button
-                className="flex-1 bg-green-600 hover:bg-green-700"
-                onClick={() => window.open(`https://wa.me/${client?.phone?.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(messageDraft)}`, '_blank')}
-              >
-                <Send className="w-4 h-4 mr-2" />
-                WhatsApp
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <WhatsAppMessageDialog
+        open={isMessageDialogOpen}
+        onOpenChange={setIsMessageDialogOpen}
+        loading={messageLoading}
+        message={messageDraft}
+        onMessageChange={setMessageDraft}
+        clientPhone={client.phone}
+      />
 
 
 

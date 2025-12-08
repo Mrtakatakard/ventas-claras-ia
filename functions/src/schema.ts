@@ -51,6 +51,7 @@ export const createInvoiceSchema = z.object({
     currency: z.enum(['DOP', 'USD']),
     quoteId: z.string().optional(),
     includeITBIS: z.boolean().optional(),
+    itbisRate: z.number().optional(),
 });
 
 export const updateInvoiceSchema = createInvoiceSchema.partial().extend({
@@ -81,6 +82,7 @@ export const createQuoteSchema = z.object({
     currency: z.enum(['DOP', 'USD']),
     notes: z.string().optional(),
     includeITBIS: z.boolean().optional(),
+    itbisRate: z.number().optional(),
 });
 
 export const updateQuoteSchema = createQuoteSchema.partial().extend({

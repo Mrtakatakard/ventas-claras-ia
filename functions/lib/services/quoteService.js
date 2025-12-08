@@ -70,6 +70,7 @@ exports.quoteService = {
             currency: quote.currency,
             quoteId: quote.id,
             includeITBIS: quote.includeITBIS,
+            itbisRate: quote.itbisRate,
         };
         const invoiceId = await invoiceService.createInvoice(invoiceData, userId);
         // Update quote status
