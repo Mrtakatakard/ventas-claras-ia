@@ -18,7 +18,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.quoteController = exports.invoiceController = exports.productController = exports.clientController = exports.general = exports.team = void 0;
+exports.general = exports.team = void 0;
 // import { app, db } from "./config/firebase";
 // export { app, db };
 // Exporting specific functions for better organization
@@ -26,8 +26,8 @@ exports.team = require("./team/invite");
 __exportStar(require("./invoicing/receivables"), exports);
 // export * as deleteInvoice from "./invoicing/deleteInvoice"; // Deprecated
 exports.general = require("./general/contact");
-exports.clientController = require("./controllers/clientController");
-exports.productController = require("./controllers/productController");
-exports.invoiceController = require("./controllers/invoiceController");
-exports.quoteController = require("./controllers/quoteController");
+__exportStar(require("./controllers/clientController"), exports);
+__exportStar(require("./controllers/productController"), exports);
+__exportStar(require("./controllers/invoiceController"), exports);
+__exportStar(require("./controllers/quoteController"), exports);
 //# sourceMappingURL=index.js.map

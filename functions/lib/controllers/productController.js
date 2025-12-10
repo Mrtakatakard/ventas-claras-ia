@@ -84,8 +84,8 @@ exports.checkProductCodeExists = (0, https_1.onCall)({ cors: true, maxInstances:
             throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
         }
         const { code, excludeId } = request.data;
-        // Lightweight log for this frequent check
-        // logger.debug(`Checking code: ${code}`); 
+        // Log for debugging
+        logger.info(`Checking code: ${code}, excludeId: ${excludeId}`);
         return await productService_1.productService.checkProductCodeExists(code, request.auth.uid, excludeId);
     }
     catch (error) {

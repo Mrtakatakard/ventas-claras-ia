@@ -15,7 +15,7 @@ export * as team from './team/invite';
 export * from "./invoicing/receivables";
 // export * as deleteInvoice from "./invoicing/deleteInvoice"; // Deprecated
 export * as general from './general/contact';
-export * as clientController from './controllers/clientController';
-export * as productController from './controllers/productController';
-export * as invoiceController from './controllers/invoiceController';
-export * as quoteController from './controllers/quoteController';
+export * from './controllers/clientController';
+export * from './controllers/productController';
+export * from './controllers/invoiceController';
+export * from './controllers/quoteController';
