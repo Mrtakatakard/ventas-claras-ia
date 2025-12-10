@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateQuoteSchema = exports.createQuoteSchema = exports.addPaymentSchema = exports.updateInvoiceSchema = exports.createInvoiceSchema = exports.paymentSchema = exports.invoiceItemSchema = exports.addressSchema = void 0;
+exports.updateProductSchema = exports.createProductSchema = exports.updateQuoteSchema = exports.createQuoteSchema = exports.addPaymentSchema = exports.updateInvoiceSchema = exports.createInvoiceSchema = exports.productBatchSchema = exports.paymentSchema = exports.invoiceItemSchema = exports.addressSchema = void 0;
 const zod_1 = require("zod");
 // Helper schemas
 exports.addressSchema = zod_1.z.object({
@@ -31,6 +31,13 @@ exports.paymentSchema = zod_1.z.object({
     status: zod_1.z.literal('pagado'),
     note: zod_1.z.string().optional(),
     imageUrl: zod_1.z.string().optional(),
+});
+exports.productBatchSchema = zod_1.z.object({
+    id: zod_1.z.string().optional(),
+    cost: zod_1.z.number().min(0),
+    price: zod_1.z.number().positive(),
+    stock: zod_1.z.number().int().min(0),
+    expirationDate: zod_1.z.string().optional(), // ISO date string
 });
 // Main schemas for creation/updates
 // We use .partial() or .omit() depending on the use case (create vs update)
@@ -81,5 +88,29 @@ exports.createQuoteSchema = zod_1.z.object({
 });
 exports.updateQuoteSchema = exports.createQuoteSchema.partial().extend({
     id: zod_1.z.string(),
+});
+exports.createProductSchema = zod_1.z.object({
+    code: zod_1.z.string().min(1, "El código es requerido."),
+    name: zod_1.z.string().min(2, "El nombre debe tener al menos 2 caracteres."),
+    description: zod_1.z.string().optional(),
+    currency: zod_1.z.enum(['DOP', 'USD']),
+    category: zod_1.z.string().min(1, "La categoría es requerida."),
+    batches: zod_1.z.array(exports.productBatchSchema).min(1, "Debes agregar al menos un lote de producto."),
+    isTaxExempt: zod_1.z.boolean().optional(),
+    notificationThreshold: zod_1.z.number().int().min(0).optional(),
+    imageUrl: zod_1.z.string().optional(),
+    restockTimeDays: zod_1.z.number().int().min(0).nullable().optional(),
+    // Computed fields like price, cost, stock are derived from batches in some views, 
+    // but might be passed for backward compatibility or simple indexing.
+    // The service layer might calculate them, allowing them to be optional here effectively.
+    // However, looking at the frontend form, it passes them. Let's make them optional in schema
+    // as the service/repository might calculate them or they might be legacy.
+    // Update: frontend sends keys 'price', 'cost', 'stock' calculated from batches[0]
+    price: zod_1.z.number().optional(),
+    cost: zod_1.z.number().optional(),
+    stock: zod_1.z.number().optional(),
+});
+exports.updateProductSchema = exports.createProductSchema.partial().extend({
+    id: zod_1.z.string().optional(), // ID is usually passed as separate argument to update function, but sometimes in body
 });
 //# sourceMappingURL=schema.js.map

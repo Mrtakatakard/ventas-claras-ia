@@ -33,6 +33,14 @@ export const paymentSchema = z.object({
     imageUrl: z.string().optional(),
 });
 
+export const productBatchSchema = z.object({
+    id: z.string().optional(),
+    cost: z.number().min(0),
+    price: z.number().positive(),
+    stock: z.number().int().min(0),
+    expirationDate: z.string().optional(), // ISO date string
+});
+
 // Main schemas for creation/updates
 // We use .partial() or .omit() depending on the use case (create vs update)
 
@@ -87,4 +95,30 @@ export const createQuoteSchema = z.object({
 
 export const updateQuoteSchema = createQuoteSchema.partial().extend({
     id: z.string(),
+});
+
+export const createProductSchema = z.object({
+    code: z.string().min(1, "El código es requerido."),
+    name: z.string().min(2, "El nombre debe tener al menos 2 caracteres."),
+    description: z.string().optional(),
+    currency: z.enum(['DOP', 'USD']),
+    category: z.string().min(1, "La categoría es requerida."),
+    batches: z.array(productBatchSchema).min(1, "Debes agregar al menos un lote de producto."),
+    isTaxExempt: z.boolean().optional(),
+    notificationThreshold: z.number().int().min(0).optional(),
+    imageUrl: z.string().optional(),
+    restockTimeDays: z.number().int().min(0).nullable().optional(),
+    // Computed fields like price, cost, stock are derived from batches in some views, 
+    // but might be passed for backward compatibility or simple indexing.
+    // The service layer might calculate them, allowing them to be optional here effectively.
+    // However, looking at the frontend form, it passes them. Let's make them optional in schema
+    // as the service/repository might calculate them or they might be legacy.
+    // Update: frontend sends keys 'price', 'cost', 'stock' calculated from batches[0]
+    price: z.number().optional(),
+    cost: z.number().optional(),
+    stock: z.number().optional(),
+});
+
+export const updateProductSchema = createProductSchema.partial().extend({
+    id: z.string().optional(), // ID is usually passed as separate argument to update function, but sometimes in body
 });
