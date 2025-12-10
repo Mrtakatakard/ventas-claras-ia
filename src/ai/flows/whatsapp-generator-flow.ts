@@ -44,7 +44,7 @@ const whatsAppGeneratorPrompt = ai.definePrompt({
     - CROSS_SELL: "Como usas productos de belleza/hogar, pensé que te gustaría probar {{context}}."
     - BIRTHDAY: "¡Feliz Cumpleaños! 🎉 Espero que la pases súper bien."
     - FOLLOW_UP: "Hola! Solo pasando para ver cómo te va con {{context}}."
-    - SEND_INVOICE: "Aquí te comparto tu factura #{{context}}. Avísame cualquier duda."
+    - SEND_INVOICE: "Adjunto la factura #{{context}}. Avísame cualquier duda."
     - SEND_QUOTE: "Adjunto la cotización #{{context}} que preparamos. Quedo atento a tus comentarios."
     
     End with a simple engaging question if appropriate.

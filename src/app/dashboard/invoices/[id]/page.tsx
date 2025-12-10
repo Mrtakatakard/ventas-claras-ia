@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { notFound, useParams } from 'next/navigation';
+import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ export default function InvoiceDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const { userId } = useAuth();
+  const { toast } = useToast();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -72,9 +74,59 @@ export default function InvoiceDetailPage() {
 
   const handleGenerateMessage = async () => {
     if (!invoice || !client) return;
+
+    // Use native share if available and supports files (mostly Mobile)
+    if (navigator.share && navigator.canShare) {
+      setMessageLoading(true);
+      try {
+        const blob = await generatePdfBlob();
+        if (!blob) throw new Error("Failed to generate PDF");
+
+        const file = new File([blob], `Factura-${invoice.invoiceNumber}.pdf`, { type: 'application/pdf' });
+
+        // Generate simple message for sharing context
+        let shareMessage = "";
+        try {
+          // Quick generation without dialog for native share
+          const result = await getWhatsAppMessage({
+            clientName: client.name,
+            intent: 'SEND_INVOICE',
+            context: invoice.invoiceNumber,
+            tone: 'Casual'
+          });
+          shareMessage = result.message;
+        } catch {
+          shareMessage = `Hola ${client.name}, aquí te envío la factura #${invoice.invoiceNumber}.`;
+        }
+
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: `Factura ${invoice.invoiceNumber}`,
+            text: shareMessage,
+          });
+          toast({ title: "Enviado", description: "Se abrió el menú de compartir." });
+          setMessageLoading(false);
+          return; // Exit if native share worked
+        }
+      } catch (error) {
+        console.error("Native share failed, falling back to dialog", error);
+      }
+      setMessageLoading(false);
+    }
+
+    // Fallback: Show Dialog + Auto Download (Desktop Behavior)
     setIsMessageDialogOpen(true);
     setMessageLoading(true);
     setMessageDraft("Generando mensaje de factura... 📠");
+
+    // Start PDF download in parallel or sequence
+    try {
+      await handleDownloadPdf();
+      toast({ title: "PDF Descargado", description: "El PDF se ha guardado. Recuerda adjuntarlo en WhatsApp." });
+    } catch (e) {
+      console.error("Error downloading PDF", e);
+    }
 
     try {
       const result = await getWhatsAppMessage({
@@ -92,9 +144,8 @@ export default function InvoiceDetailPage() {
     }
   };
 
-  const handleDownloadPdf = async () => {
-    if (!invoice) return;
-    setIsDownloading(true);
+  const generatePdfBlob = async (): Promise<Blob | null> => {
+    if (!invoice) return null;
 
     const { default: jsPDF } = await import('jspdf');
     const { default: autoTable } = await import('jspdf-autotable');
@@ -247,7 +298,22 @@ export default function InvoiceDetailPage() {
     doc.text("Balance Pendiente:", totalsX, finalY, { align: 'right' });
     doc.text(formatCurrency(invoice.balanceDue, invoice.currency), valueX, finalY, { align: 'right' });
 
-    doc.save(`factura-${invoice.invoiceNumber}.pdf`);
+    return doc.output('blob');
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!invoice) return;
+    setIsDownloading(true);
+    const blob = await generatePdfBlob();
+    if (blob) {
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `factura-${invoice.invoiceNumber}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    }
     setIsDownloading(false);
   };
 
