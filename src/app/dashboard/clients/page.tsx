@@ -32,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type SortKey = keyof Client;
@@ -309,100 +310,103 @@ function ClientsContent() {
             </div>
           </div>
           <TooltipProvider>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    <Button variant="ghost" onClick={() => handleSort('name')} className="-ml-4">
-                      Nombre Completo
-                      {sortConfig.key === 'name' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
-                  </TableHead>
-                  <TableHead>
-                    <Button variant="ghost" onClick={() => handleSort('clientTypeName')} className="-ml-4">
-                      Tipo de Cliente
-                      {sortConfig.key === 'clientTypeName' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="hidden md:table-cell">
-                    <Button variant="ghost" onClick={() => handleSort('email')} className="-ml-4">
-                      Correo Electrónico
-                      {sortConfig.key === 'email' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="hidden sm:table-cell">
-                    <Button variant="ghost" onClick={() => handleSort('phone')} className="-ml-4">
-                      Teléfono
-                      {sortConfig.key === 'phone' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                      <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-40" /></TableCell>
-                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
-                      <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto rounded-full" /></TableCell>
-                    </TableRow>
-                  ))
-                ) : paginatedClients.length > 0 ? (
-                  paginatedClients.map(client => {
-                    return (
-                      <TableRow key={client.id}>
-                        <TableCell className="font-medium max-w-[150px] truncate">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span>{client.name}</span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{client.name}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {client.clientTypeName || 'Sin asignar'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">{client.email}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{client.phone}</TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Abrir menú de acciones</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                              <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/clients/${client.id}`}><Eye className="mr-2 h-4 w-4" />Ver Detalles</Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleEditClick(client)}><Edit className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(client.id)}>
-                                <Trash2 className="mr-2 h-4 w-4" />Eliminar
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })
-                ) : (
+            <ScrollArea className="w-full whitespace-nowrap rounded-md border">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center h-24">
-                      {filter ? 'No se encontraron clientes.' : 'No hay clientes. ¡Agrega tu primer cliente!'}
-                    </TableCell>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('name')} className="-ml-4">
+                        Nombre Completo
+                        {sortConfig.key === 'name' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('clientTypeName')} className="-ml-4">
+                        Tipo de Cliente
+                        {sortConfig.key === 'clientTypeName' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      <Button variant="ghost" onClick={() => handleSort('email')} className="-ml-4">
+                        Correo Electrónico
+                        {sortConfig.key === 'email' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="hidden sm:table-cell">
+                      <Button variant="ghost" onClick={() => handleSort('phone')} className="-ml-4">
+                        Teléfono
+                        {sortConfig.key === 'phone' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                        <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-40" /></TableCell>
+                        <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto rounded-full" /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : paginatedClients.length > 0 ? (
+                    paginatedClients.map(client => {
+                      return (
+                        <TableRow key={client.id}>
+                          <TableCell className="font-medium max-w-[150px] truncate">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span>{client.name}</span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{client.name}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {client.clientTypeName || 'Sin asignar'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">{client.email}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{client.phone}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <span className="sr-only">Abrir menú de acciones</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/dashboard/clients/${client.id}`}><Eye className="mr-2 h-4 w-4" />Ver Detalles</Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEditClick(client)}><Edit className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(client.id)}>
+                                  <Trash2 className="mr-2 h-4 w-4" />Eliminar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center h-24">
+                        {filter ? 'No se encontraron clientes.' : 'No hay clientes. ¡Agrega tu primer cliente!'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
           </TooltipProvider>
           <div className="flex flex-col-reverse items-center justify-between gap-y-4 pt-4 border-t md:flex-row md:gap-y-0">
             <div className="flex-1 text-sm text-muted-foreground">

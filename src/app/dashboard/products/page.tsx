@@ -32,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type ProductWithCalculations = Product & { totalStock: number; nextExpiration?: string; };
@@ -352,111 +353,114 @@ function ProductsContent() {
               />
             </div>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="hidden sm:table-cell w-[64px]">
-                  <span className="sr-only">Imagen</span>
-                </TableHead>
-                <TableHead className="hidden md:table-cell w-[100px]">
-                  <Button variant="ghost" onClick={() => handleSort('code')} className="-ml-4">
-                    Código
-                    {sortConfig.key === 'code' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                  </Button>
-                </TableHead>
-                <TableHead>
-                  <Button variant="ghost" onClick={() => handleSort('name')} className="-ml-4">
-                    Nombre del Producto
-                    {sortConfig.key === 'name' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                  </Button>
-                </TableHead>
-                <TableHead>
-                  <Button variant="ghost" onClick={() => handleSort('totalStock')} className="-ml-4">
-                    Stock Total
-                    {sortConfig.key === 'totalStock' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                  </Button>
-                </TableHead>
-                <TableHead className="hidden lg:table-cell">
-                  <Button variant="ghost" onClick={() => handleSort('category')} className="-ml-4">
-                    Categoría
-                    {sortConfig.key === 'category' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                  </Button>
-                </TableHead>
-                <TableHead className="hidden sm:table-cell">
-                  Precio Venta
-                </TableHead>
-                <TableHead className="hidden lg:table-cell">
-                  Próx. Expiración
-                </TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-10 w-10 rounded-md" /></TableCell>
-                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-40" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-24 rounded-full" /></TableCell>
-                    <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
-                    <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-8 w-8 rounded-full" /></TableCell>
-                  </TableRow>
-                ))
-              ) : paginatedProducts.length > 0 ? (
-                paginatedProducts.map((product) => {
-                  const firstBatch = product.batches?.[0];
-                  return (
-                    <TableRow key={product.id}>
-                      <TableCell className="hidden sm:table-cell">
-                        <Avatar className="h-10 w-10 rounded-md">
-                          <AvatarImage src={product.imageUrl} alt={product.name} data-ai-hint="product image" />
-                          <AvatarFallback className="rounded-md">{product.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                      </TableCell>
-                      <TableCell className="font-mono hidden md:table-cell">{product.code}</TableCell>
-                      <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell>
-                        <Badge variant={getStockBadgeVariant(product.totalStock)} className="text-sm">
-                          {product.totalStock > 0 ? product.totalStock : "Agotado"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">{product.category}</TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        {firstBatch ? formatCurrency(firstBatch.price, product.currency) : "N/A"}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">{product.nextExpiration || 'N/A'}</TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Abrir menú de acciones</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleEditClick(product)}><Edit className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(product.id)}>
-                              <Trash2 className="mr-2 h-4 w-4" />Eliminar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              ) : (
+          <ScrollArea className="w-full whitespace-nowrap rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center h-24">
-                    {filter ? 'No se encontraron productos.' : 'No hay productos. ¡Agrega tu primer producto!'}
-                  </TableCell>
+                  <TableHead className="hidden sm:table-cell w-[64px]">
+                    <span className="sr-only">Imagen</span>
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell w-[100px]">
+                    <Button variant="ghost" onClick={() => handleSort('code')} className="-ml-4">
+                      Código
+                      {sortConfig.key === 'code' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button variant="ghost" onClick={() => handleSort('name')} className="-ml-4">
+                      Nombre del Producto
+                      {sortConfig.key === 'name' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button variant="ghost" onClick={() => handleSort('totalStock')} className="-ml-4">
+                      Stock Total
+                      {sortConfig.key === 'totalStock' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead className="hidden lg:table-cell">
+                    <Button variant="ghost" onClick={() => handleSort('category')} className="-ml-4">
+                      Categoría
+                      {sortConfig.key === 'category' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead className="hidden sm:table-cell">
+                    Precio Venta
+                  </TableHead>
+                  <TableHead className="hidden lg:table-cell">
+                    Próx. Expiración
+                  </TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-10 w-10 rounded-md" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-24 rounded-full" /></TableCell>
+                      <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                      <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-8 rounded-full" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : paginatedProducts.length > 0 ? (
+                  paginatedProducts.map((product) => {
+                    const firstBatch = product.batches?.[0];
+                    return (
+                      <TableRow key={product.id}>
+                        <TableCell className="hidden sm:table-cell">
+                          <Avatar className="h-10 w-10 rounded-md">
+                            <AvatarImage src={product.imageUrl} alt={product.name} data-ai-hint="product image" />
+                            <AvatarFallback className="rounded-md">{product.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                        </TableCell>
+                        <TableCell className="font-mono hidden md:table-cell">{product.code}</TableCell>
+                        <TableCell className="font-medium">{product.name}</TableCell>
+                        <TableCell>
+                          <Badge variant={getStockBadgeVariant(product.totalStock)} className="text-sm">
+                            {product.totalStock > 0 ? product.totalStock : "Agotado"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">{product.category}</TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          {firstBatch ? formatCurrency(firstBatch.price, product.currency) : "N/A"}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">{product.nextExpiration || 'N/A'}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Abrir menú de acciones</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => handleEditClick(product)}><Edit className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(product.id)}>
+                                <Trash2 className="mr-2 h-4 w-4" />Eliminar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center h-24">
+                      {filter ? 'No se encontraron productos.' : 'No hay productos. ¡Agrega tu primer producto!'}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
           <div className="flex flex-col-reverse items-center justify-between gap-y-4 pt-4 border-t md:flex-row md:gap-y-0">
             <div className="flex-1 text-sm text-muted-foreground">
               {sortedProducts.length} productos en total.

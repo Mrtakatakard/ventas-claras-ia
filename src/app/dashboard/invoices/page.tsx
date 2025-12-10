@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { AddPaymentForm } from "@/components/add-payment-form"
 
@@ -187,111 +188,114 @@ export default function InvoicesPage() {
               />
             </div>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <Button variant="ghost" onClick={() => handleSort('invoiceNumber')} className="-ml-4">
-                    Factura #
-                    {sortConfig.key === 'invoiceNumber' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                  </Button>
-                </TableHead>
-                <TableHead>
-                  <Button variant="ghost" onClick={() => handleSort('clientName')} className="-ml-4">
-                    Cliente
-                    {sortConfig.key === 'clientName' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                  </Button>
-                </TableHead>
-                <TableHead className="hidden md:table-cell">
-                  <Button variant="ghost" onClick={() => handleSort('issueDate')} className="-ml-4">
-                    Fecha Emisión
-                    {sortConfig.key === 'issueDate' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                  </Button>
-                </TableHead>
-                <TableHead className="hidden sm:table-cell text-right">
-                  <Button variant="ghost" onClick={() => handleSort('total')} className="ml-auto -mr-4 flex">
-                    Total
-                    {sortConfig.key === 'total' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                  </Button>
-                </TableHead>
-                <TableHead className="text-right">
-                  <Button variant="ghost" onClick={() => handleSort('balanceDue')} className="ml-auto -mr-4 flex">
-                    Balance Pend.
-                    {sortConfig.key === 'balanceDue' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                  </Button>
-                </TableHead>
-                <TableHead className="hidden sm:table-cell">
-                  <Button variant="ghost" onClick={() => handleSort('status')} className="-ml-4">
-                    Estado
-                    {sortConfig.key === 'status' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-                  </Button>
-                </TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                    <TableCell><Skeleton className="h-8 w-8 ml-auto rounded-full" /></TableCell>
-                  </TableRow>
-                ))
-              ) : paginatedInvoices.length > 0 ? (
-                paginatedInvoices.map((invoice) => (
-                  <TableRow key={invoice.id}>
-                    <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                    <TableCell>{invoice.clientName}</TableCell>
-                    <TableCell className="hidden md:table-cell">{invoice.issueDate}</TableCell>
-                    <TableCell className="hidden sm:table-cell text-right">{formatCurrency(invoice.total, invoice.currency)}</TableCell>
-                    <TableCell className="text-right font-medium">{formatCurrency(invoice.balanceDue, invoice.currency)}</TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <Badge variant={getStatusVariant(invoice.status)}>{capitalizeFirstLetter(invoice.status)}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Abrir menú de acciones</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/invoices/${invoice.id}`}><Eye className="mr-2 h-4 w-4" />Ver Detalles</Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild disabled={invoice.status === 'pagada'}>
-                            <Link href={`/dashboard/invoices/${invoice.id}/edit`} className={invoice.status === 'pagada' ? 'pointer-events-none' : ''}>
-                              <Edit className="mr-2 h-4 w-4" />Editar
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleOpenPaymentDialog(invoice)} disabled={invoice.balanceDue <= 0}>
-                            <CreditCard className="mr-2 h-4 w-4" />Realizar Pago
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(invoice.id)}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Eliminar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
+          <ScrollArea className="w-full whitespace-nowrap rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center h-24">
-                    {filter ? 'No se encontraron facturas.' : 'No hay facturas. ¡Crea la primera!'}
-                  </TableCell>
+                  <TableHead>
+                    <Button variant="ghost" onClick={() => handleSort('invoiceNumber')} className="-ml-4">
+                      Factura #
+                      {sortConfig.key === 'invoiceNumber' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button variant="ghost" onClick={() => handleSort('clientName')} className="-ml-4">
+                      Cliente
+                      {sortConfig.key === 'clientName' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    <Button variant="ghost" onClick={() => handleSort('issueDate')} className="-ml-4">
+                      Fecha Emisión
+                      {sortConfig.key === 'issueDate' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead className="hidden sm:table-cell text-right">
+                    <Button variant="ghost" onClick={() => handleSort('total')} className="ml-auto -mr-4 flex">
+                      Total
+                      {sortConfig.key === 'total' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Button variant="ghost" onClick={() => handleSort('balanceDue')} className="ml-auto -mr-4 flex">
+                      Balance Pend.
+                      {sortConfig.key === 'balanceDue' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead className="hidden sm:table-cell">
+                    <Button variant="ghost" onClick={() => handleSort('status')} className="-ml-4">
+                      Estado
+                      {sortConfig.key === 'status' ? (sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />) : <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-8 ml-auto rounded-full" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : paginatedInvoices.length > 0 ? (
+                  paginatedInvoices.map((invoice) => (
+                    <TableRow key={invoice.id}>
+                      <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
+                      <TableCell>{invoice.clientName}</TableCell>
+                      <TableCell className="hidden md:table-cell">{invoice.issueDate}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-right">{formatCurrency(invoice.total, invoice.currency)}</TableCell>
+                      <TableCell className="text-right font-medium">{formatCurrency(invoice.balanceDue, invoice.currency)}</TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <Badge variant={getStatusVariant(invoice.status)}>{capitalizeFirstLetter(invoice.status)}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Abrir menú de acciones</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/dashboard/invoices/${invoice.id}`}><Eye className="mr-2 h-4 w-4" />Ver Detalles</Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild disabled={invoice.status === 'pagada'}>
+                              <Link href={`/dashboard/invoices/${invoice.id}/edit`} className={invoice.status === 'pagada' ? 'pointer-events-none' : ''}>
+                                <Edit className="mr-2 h-4 w-4" />Editar
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenPaymentDialog(invoice)} disabled={invoice.balanceDue <= 0}>
+                              <CreditCard className="mr-2 h-4 w-4" />Realizar Pago
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(invoice.id)}>
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center h-24">
+                      {filter ? 'No se encontraron facturas.' : 'No hay facturas. ¡Crea la primera!'}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
           <div className="flex flex-col-reverse items-center justify-between gap-y-4 pt-4 border-t md:flex-row md:gap-y-0">
             <div className="flex-1 text-sm text-muted-foreground">
               {sortedInvoices.length} facturas en total.

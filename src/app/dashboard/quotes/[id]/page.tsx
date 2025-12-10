@@ -302,29 +302,30 @@ export default function QuoteDetailPage() {
   return (
     <>
       <PageHeader title={`Cotización ${quote.quoteNumber}`} description={`Emitida el ${quote.issueDate}`}>
-        <div className="flex items-center gap-2 print:hidden">
-          <Button variant="outline" onClick={() => window.print()}>
+        <div className="flex flex-wrap items-center gap-2 print:hidden mt-2 sm:mt-0">
+          <Button variant="outline" onClick={() => window.print()} className="flex-1 sm:flex-none">
             <Printer className="mr-2 h-4 w-4" />
-            Imprimir
+            <span className="sr-only sm:not-sr-only">Imprimir</span>
           </Button>
-          <Button onClick={handleDownloadPdf} disabled={isDownloading}>
+          <Button onClick={handleDownloadPdf} disabled={isDownloading} className="flex-1 sm:flex-none">
             {isDownloading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Download className="mr-2 h-4 w-4" />
             )}
-            Descargar PDF
+            <span className="sm:hidden">PDF</span>
+            <span className="hidden sm:inline">Descargar PDF</span>
           </Button>
-          <Button onClick={handleConvertToInvoice} disabled={isConverting || quote.status === 'facturada'}>
+          <Button onClick={handleConvertToInvoice} disabled={isConverting || quote.status === 'facturada'} className="flex-1 sm:flex-none">
             {isConverting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <FileText className="mr-2 h-4 w-4" />
             )}
-            Convertir a Factura
-            Convertir a Factura
+            <span className="sm:hidden">Convertir</span>
+            <span className="hidden sm:inline">Convertir a Factura</span>
           </Button>
-          <Button variant="outline" onClick={handleGenerateMessage} className="text-green-600 border-green-600 hover:bg-green-50">
+          <Button variant="outline" onClick={handleGenerateMessage} className="flex-1 sm:flex-none text-green-600 border-green-600 hover:bg-green-50">
             <MessageSquare className="mr-2 h-4 w-4" />
             WhatsApp
           </Button>
@@ -340,29 +341,29 @@ export default function QuoteDetailPage() {
         </div>
       </PageHeader>
 
-      <Card className="p-8" id="invoice-printable-area">
-        <div className="grid gap-10">
-          <div className="flex justify-between">
+      <Card className="p-4 sm:p-8" id="invoice-printable-area">
+        <div className="grid gap-6 sm:gap-10">
+          <div className="flex flex-col sm:flex-row justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold">Ventas Claras</h2>
-              <p className="text-muted-foreground">Tu Negocio, Tus Reglas.</p>
+              <h2 className="text-xl sm:text-2xl font-bold">Ventas Claras</h2>
+              <p className="text-muted-foreground text-sm sm:text-base">Tu Negocio, Tus Reglas.</p>
             </div>
-            <div className="text-right">
-              <h1 className="text-3xl font-extrabold text-primary">{quote.quoteNumber}</h1>
+            <div className="text-left sm:text-right">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-primary">{quote.quoteNumber}</h1>
               <Badge variant={getStatusVariant(quote.status)} className="text-sm mt-1">{capitalizeFirstLetter(quote.status)}</Badge>
             </div>
           </div>
 
           <Separator />
 
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
             <div>
               <h3 className="font-semibold mb-2">Cliente:</h3>
               <p className="font-bold">{quote.clientName}</p>
               <p className="text-muted-foreground">{quote.clientEmail}</p>
               {quote.clientAddress && <p className="text-muted-foreground">{quote.clientAddress}</p>}
             </div>
-            <div className="text-right">
+            <div className="text-left sm:text-right">
               <h3 className="font-semibold mb-1">Fecha de Emisión:</h3>
               <p className="text-muted-foreground">{quote.issueDate}</p>
               <h3 className="font-semibold mb-1 mt-2">Válida hasta:</h3>

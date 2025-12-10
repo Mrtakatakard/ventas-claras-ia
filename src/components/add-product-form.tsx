@@ -183,7 +183,7 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
         <FormField control={form.control} name="name" render={({ field }) => (
           <FormItem><FormLabel>Nombre del Producto</FormLabel><FormControl><Input placeholder="Producto Estrella A" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField control={form.control} name="category" render={({ field }) => (
             <FormItem>
               <FormLabel>Categoría</FormLabel>
@@ -224,7 +224,7 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
           </div>
           {fields.map((batchField: any, index: number) => (
             <div key={batchField.id} className="grid gap-4 p-4 border rounded-lg relative">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <FormField control={form.control} name={`batches.${index}.cost`} render={({ field }) => (
                   <FormItem><FormLabel>Costo</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 && !isEditing ? '' : field.value} onChange={e => field.onChange(e.target.value === '' ? '' : +e.target.value)} /></FormControl><FormMessage /></FormItem>
                 )} />
@@ -249,7 +249,7 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
         </div>
 
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField control={form.control} name="restockTimeDays" render={({ field }) => (
             <FormItem>
               <FormLabel>Reposición (días)</FormLabel>

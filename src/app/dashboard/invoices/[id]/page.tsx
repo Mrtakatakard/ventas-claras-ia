@@ -484,25 +484,27 @@ export default function InvoiceDetailPage() {
   return (
     <>
       <PageHeader title={`Factura ${invoice.invoiceNumber}`} description={`Emitida el ${invoice.issueDate}`}>
-        <div className="flex items-center gap-2 print:hidden">
-          <Button variant="outline" onClick={() => window.print()}>
+        <div className="flex flex-wrap items-center gap-2 print:hidden mt-2 sm:mt-0">
+          <Button variant="outline" onClick={() => window.print()} className="flex-1 sm:flex-none">
             <Printer className="mr-2 h-4 w-4" />
-            Imprimir
+            <span className="sr-only sm:not-sr-only">Imprimir</span>
           </Button>
-          <Button onClick={handleDownloadPdf} disabled={isDownloading}>
+          <Button onClick={handleDownloadPdf} disabled={isDownloading} className="flex-1 sm:flex-none">
             {isDownloading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Download className="mr-2 h-4 w-4" />
             )}
-            Descargar PDF
+            <span className="sm:hidden">PDF</span>
+            <span className="hidden sm:inline">Descargar PDF</span>
           </Button>
           <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-            <Button onClick={() => setIsPaymentDialogOpen(true)} disabled={invoice.balanceDue <= 0}>
+            <Button onClick={() => setIsPaymentDialogOpen(true)} disabled={invoice.balanceDue <= 0} className="flex-1 sm:flex-none">
               <CreditCard className="mr-2 h-4 w-4" />
-              Registrar Pago
+              <span className="sm:hidden">Pagar</span>
+              <span className="hidden sm:inline">Registrar Pago</span>
             </Button>
-            <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto w-full">
               <DialogHeader>
                 <DialogTitle>Registrar un Nuevo Pago</DialogTitle>
                 <DialogDescription>
@@ -516,7 +518,7 @@ export default function InvoiceDetailPage() {
               />
             </DialogContent>
           </Dialog>
-          <Button variant="outline" onClick={handleGenerateMessage} className="text-green-600 border-green-600 hover:bg-green-50">
+          <Button variant="outline" onClick={handleGenerateMessage} className="flex-1 sm:flex-none text-green-600 border-green-600 hover:bg-green-50">
             <MessageSquare className="mr-2 h-4 w-4" />
             WhatsApp
           </Button>
@@ -535,29 +537,29 @@ export default function InvoiceDetailPage() {
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 flex flex-col gap-6">
-          <Card className="p-8" id="invoice-printable-area">
-            <div className="grid gap-10">
-              <div className="flex justify-between">
+          <Card className="p-4 sm:p-8" id="invoice-printable-area">
+            <div className="grid gap-6 sm:gap-10">
+              <div className="flex flex-col sm:flex-row justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-bold">Ventas Claras</h2>
-                  <p className="text-muted-foreground">Tu Negocio, Tus Reglas.</p>
+                  <h2 className="text-xl sm:text-2xl font-bold">Ventas Claras</h2>
+                  <p className="text-muted-foreground text-sm sm:text-base">Tu Negocio, Tus Reglas.</p>
                 </div>
-                <div className="text-right">
-                  <h1 className="text-3xl font-extrabold text-primary">{invoice.invoiceNumber}</h1>
+                <div className="text-left sm:text-right">
+                  <h1 className="text-2xl sm:text-3xl font-extrabold text-primary">{invoice.invoiceNumber}</h1>
                   <Badge variant={getStatusVariant(invoice.status)} className="text-sm mt-1">{capitalizeFirstLetter(invoice.status)}</Badge>
                 </div>
               </div>
 
               <Separator />
 
-              <div className="grid md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
                 <div>
                   <h3 className="font-semibold mb-2">Facturar a:</h3>
                   <p className="font-bold">{invoice.clientName}</p>
                   <p className="text-muted-foreground">{invoice.clientEmail}</p>
                   {invoice.clientAddress && <p className="text-muted-foreground">{invoice.clientAddress}</p>}
                 </div>
-                <div className="text-right">
+                <div className="text-left sm:text-right">
                   <h3 className="font-semibold mb-1">Fecha de Emisión:</h3>
                   <p className="text-muted-foreground">{invoice.issueDate}</p>
                   <h3 className="font-semibold mb-1 mt-2">Fecha de Vencimiento:</h3>
@@ -569,11 +571,11 @@ export default function InvoiceDetailPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[100px]">Cant.</TableHead>
+                      <TableHead className="w-[80px] sm:w-[100px]">Cant.</TableHead>
                       <TableHead>Producto</TableHead>
                       <TableHead className="text-right">Precio Unit.</TableHead>
-                      <TableHead className="text-right">Costo Unit.</TableHead>
-                      <TableHead className="text-right">Desc. (%)</TableHead>
+                      <TableHead className="text-right hidden sm:table-cell">Costo Unit.</TableHead>
+                      <TableHead className="text-right">Desc.</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -583,7 +585,7 @@ export default function InvoiceDetailPage() {
                         <TableCell>{item.quantity}</TableCell>
                         <TableCell>{item.productName}</TableCell>
                         <TableCell className="text-right">{formatCurrency(item.unitPrice, invoice.currency)}</TableCell>
-                        <TableCell className="text-right">{item.unitCost ? formatCurrency(item.unitCost, invoice.currency) : "N/A"}</TableCell>
+                        <TableCell className="text-right hidden sm:table-cell">{item.unitCost ? formatCurrency(item.unitCost, invoice.currency) : "N/A"}</TableCell>
                         <TableCell className="text-right">{item.discount || 0}%</TableCell>
                         <TableCell className="text-right">{formatCurrency((item.finalPrice ?? item.unitPrice) * item.quantity, invoice.currency)}</TableCell>
                       </TableRow>

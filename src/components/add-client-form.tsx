@@ -153,25 +153,27 @@ export function AddClientForm({ onSuccess, client, clientTypes }: AddClientFormP
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField control={form.control} name="name" render={({ field }) => (
-          <FormItem><FormLabel>Nombre Completo</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField control={form.control} name="email" render={({ field }) => (
-          <FormItem><FormLabel>Correo Electrónico (Opcional)</FormLabel><FormControl><Input placeholder="nombre@ejemplo.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField control={form.control} name="phone" render={({ field }) => (
-          <FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input placeholder="809-123-4567" {...field} /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField control={form.control} name="birthday" render={({ field }) => (
-          <FormItem><FormLabel>Cumpleaños (Opcional)</FormLabel><FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField control={form.control} name="clientTypeId" render={({ field }) => (
-          <FormItem><FormLabel>Tipo de Cliente</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un tipo de cliente" /></SelectTrigger></FormControl>
-              <SelectContent>{clientTypes.map(type => (<SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>))}</SelectContent>
-            </Select><FormMessage /></FormItem>
-        )} />
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField control={form.control} name="name" render={({ field }) => (
+            <FormItem className="md:col-span-2"><FormLabel>Nombre Completo</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="email" render={({ field }) => (
+            <FormItem><FormLabel>Correo Electrónico (Opcional)</FormLabel><FormControl><Input placeholder="nombre@ejemplo.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="phone" render={({ field }) => (
+            <FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input placeholder="809-123-4567" {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="birthday" render={({ field }) => (
+            <FormItem><FormLabel>Cumpleaños (Opcional)</FormLabel><FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="clientTypeId" render={({ field }) => (
+            <FormItem><FormLabel>Tipo de Cliente</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un tipo de cliente" /></SelectTrigger></FormControl>
+                <SelectContent>{clientTypes.map(type => (<SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>))}</SelectContent>
+              </Select><FormMessage /></FormItem>
+          )} />
+        </div>
 
         <div className="space-y-4 rounded-lg border p-4">
           <div className="flex justify-between items-center">
