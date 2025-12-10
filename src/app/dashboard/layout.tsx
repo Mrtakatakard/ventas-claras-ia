@@ -275,8 +275,8 @@ export default function DashboardLayout({
           </div>
         </div>
       </div>
-      <div ref={contentAreaRef} className="flex flex-col md:overflow-y-auto">
-        <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6 sticky top-0 z-10">
+      <div ref={contentAreaRef} className="flex flex-col md:overflow-y-auto overflow-x-hidden w-full">
+        <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6 sticky top-0 z-10 w-full">
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button
@@ -452,7 +452,7 @@ export default function DashboardLayout({
             </DropdownMenu>
           </div>
         </header>
-        <main className="flex flex-1 flex-col gap-6 p-4 lg:p-6 bg-background">
+        <main className="flex flex-1 flex-col gap-6 p-4 lg:p-6 bg-background max-w-full">
           <Breadcrumb />
           {children}
         </main>
