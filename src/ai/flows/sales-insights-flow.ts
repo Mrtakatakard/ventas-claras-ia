@@ -98,80 +98,88 @@ const salesInsightsFlow = ai.defineFlow(
     outputSchema: SalesInsightsOutputSchema,
   },
   async (input) => {
-    const clientData = JSON.parse(input.client);
-    const clientId = clientData.id;
-
-    // Helper for IDs
-    const generateId = () => Math.random().toString(36).substring(2, 15);
-
-    if (!clientId) {
-      try {
-        const { output } = await salesInsightsPrompt(input);
-        return {
-          insights: output ? output.insights.map(text => ({ id: generateId(), text, completed: false })) : []
-        };
-      } catch (e) {
-        console.error("Error generating insights (no client ID):", e);
-        return { insights: [] };
-      }
-    }
-
-    const adminDb = getAdminDb();
-    const cacheDocRef = adminDb.collection('cacheSugerencias').doc(clientId);
-
-    // Try to get from cache first
     try {
-      const cacheDocSnap = await cacheDocRef.get();
-      const twentyFourHoursAgo = Timestamp.now().seconds - (24 * 60 * 60);
+      const clientData = JSON.parse(input.client);
+      const clientId = clientData.id;
 
-      if (cacheDocSnap.exists) {
-        const cacheData = cacheDocSnap.data();
-        const generatedAt = cacheData?.generadaEn;
+      // Helper for IDs
+      const generateId = () => Math.random().toString(36).substring(2, 15);
 
-        if (generatedAt && generatedAt.seconds > twentyFourHoursAgo) {
-          const cachedInsights = cacheData?.sugerencia;
-          // Migration check
-          if (!(Array.isArray(cachedInsights) && cachedInsights.length > 0 && typeof cachedInsights[0] === 'string')) {
-            return { insights: cachedInsights || [] };
+      if (!clientId) {
+        try {
+          const { output } = await salesInsightsPrompt(input);
+          return {
+            insights: output ? output.insights.map(text => ({ id: generateId(), text, completed: false })) : []
+          };
+        } catch (e) {
+          console.error("Error generating insights (no client ID):", e);
+          return { insights: [] };
+        }
+      }
+
+      // Initialize Admin DB inside the try block to catch init errors
+      const adminDb = getAdminDb();
+      const cacheDocRef = adminDb.collection('cacheSugerencias').doc(clientId);
+
+      // Try to get from cache first
+      try {
+        const cacheDocSnap = await cacheDocRef.get();
+        const twentyFourHoursAgo = Timestamp.now().seconds - (24 * 60 * 60);
+
+        if (cacheDocSnap.exists) {
+          const cacheData = cacheDocSnap.data();
+          const generatedAt = cacheData?.generadaEn;
+
+          if (generatedAt && generatedAt.seconds > twentyFourHoursAgo) {
+            const cachedInsights = cacheData?.sugerencia;
+            // Migration check
+            if (!(Array.isArray(cachedInsights) && cachedInsights.length > 0 && typeof cachedInsights[0] === 'string')) {
+              return { insights: cachedInsights || [] };
+            }
           }
         }
+      } catch (error) {
+        console.warn("Failed to read from cache (ignoring):", error);
+        // Continue to generation if cache fails
       }
-    } catch (error) {
-      console.warn("Failed to read from cache (ignoring):", error);
-      // Continue to generation if cache fails
-    }
 
-    // Generate new insights
-    try {
-      const { output } = await salesInsightsPrompt(input);
+      // Generate new insights
+      try {
+        const { output } = await salesInsightsPrompt(input);
 
-      if (output) {
-        const structuredInsights = output.insights.map(text => ({
-          id: generateId(),
-          text,
-          completed: false
-        }));
+        if (output) {
+          const structuredInsights = output.insights.map(text => ({
+            id: generateId(),
+            text,
+            completed: false
+          }));
 
-        // Try to save to cache
-        try {
-          await cacheDocRef.set({
-            clienteId: clientId,
-            userId: clientData.userId,
-            sugerencia: structuredInsights,
-            generadaEn: Timestamp.now(),
-          });
-        } catch (cacheError) {
-          console.warn("Failed to save to cache:", cacheError);
+          // Try to save to cache
+          try {
+            await cacheDocRef.set({
+              clienteId: clientId,
+              userId: clientData.userId,
+              sugerencia: structuredInsights,
+              generadaEn: Timestamp.now(),
+            });
+          } catch (cacheError) {
+            console.warn("Failed to save to cache:", cacheError);
+          }
+
+          return { insights: structuredInsights };
         }
-
-        return { insights: structuredInsights };
+      } catch (genError) {
+        console.error("Error generating AI insights:", genError);
+        // Return empty if generation fails, don't throw 500
+        return { insights: [] };
       }
-    } catch (genError) {
-      console.error("Error generating AI insights:", genError);
-      throw genError;
-    }
 
-    return { insights: [] };
+      return { insights: [] };
+    } catch (globalError) {
+      console.error("CRITICAL ERROR in salesInsightsFlow:", globalError);
+      // Fail gracefully returning empty insights to avoid 500 on client
+      return { insights: [] };
+    }
   }
 );
 
