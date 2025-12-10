@@ -75,8 +75,11 @@ export default function InvoiceDetailPage() {
   const handleGenerateMessage = async () => {
     if (!invoice || !client) return;
 
-    // Use native share if available and supports files (mostly Mobile)
-    if (navigator.share && navigator.canShare) {
+    // Detect Mobile/Tablet
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    // 1. MOBILE STRATEGY: Native Share + Clipboard
+    if (isMobile && navigator.share && navigator.canShare) {
       setMessageLoading(true);
       try {
         const blob = await generatePdfBlob();
@@ -84,10 +87,9 @@ export default function InvoiceDetailPage() {
 
         const file = new File([blob], `Factura-${invoice.invoiceNumber}.pdf`, { type: 'application/pdf' });
 
-        // Generate simple message for sharing context
+        // Generate message
         let shareMessage = "";
         try {
-          // Quick generation without dialog for native share
           const result = await getWhatsAppMessage({
             clientName: client.name,
             intent: 'SEND_INVOICE',
@@ -100,30 +102,40 @@ export default function InvoiceDetailPage() {
         }
 
         if (navigator.canShare({ files: [file] })) {
+          // Copy text to clipboard because WhatsApp often ignores text when sharing files
+          try {
+            await navigator.clipboard.writeText(shareMessage);
+            toast({ title: "Mensaje Copiado 📋", description: "Pégalo en el chat al enviar la factura." });
+          } catch (err) {
+            console.error("Clipboard failed", err);
+          }
+
           await navigator.share({
             files: [file],
+            // We attempt to send text/title but expect them to be ignored by some apps
             title: `Factura ${invoice.invoiceNumber}`,
             text: shareMessage,
           });
-          toast({ title: "Enviado", description: "Se abrió el menú de compartir." });
+
           setMessageLoading(false);
-          return; // Exit if native share worked
+          return; // Stop here for mobile
         }
       } catch (error) {
-        console.error("Native share failed, falling back to dialog", error);
+        console.error("Native share failed, falling back to desktop mode", error);
+        // If share fails, fall through to desktop mode
       }
       setMessageLoading(false);
     }
 
-    // Fallback: Show Dialog + Auto Download (Desktop Behavior)
+    // 2. DESKTOP STRATEGY: Dialog + Auto Download
     setIsMessageDialogOpen(true);
     setMessageLoading(true);
     setMessageDraft("Generando mensaje de factura... 📠");
 
-    // Start PDF download in parallel or sequence
+    // Start PDF download
     try {
       await handleDownloadPdf();
-      toast({ title: "PDF Descargado", description: "El PDF se ha guardado. Recuerda adjuntarlo en WhatsApp." });
+      toast({ title: "PDF Descargado", description: "Recuerda adjuntarlo en WhatsApp Web." });
     } catch (e) {
       console.error("Error downloading PDF", e);
     }
