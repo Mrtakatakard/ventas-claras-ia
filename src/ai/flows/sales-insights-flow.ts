@@ -9,8 +9,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { db } from '@/lib/firebase/config';
-import { collection, doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
+import { getAdminDb } from '@/lib/firebase/admin';
+import { Timestamp } from 'firebase-admin/firestore';
 
 const SalesInsightsInputSchema = z.object({
   client: z.string().describe("A JSON string representing the client's profile."),
@@ -43,38 +43,6 @@ const salesInsightsPrompt = ai.definePrompt({
   name: 'salesInsightsPrompt',
   input: { schema: SalesInsightsInputSchema },
   output: { schema: SalesInsightsPromptOutput },
-  // prompt: `
-  //   You are an expert sales mentor AI integrated into a CRM called Ventas Claras. 
-  //   Your goal is to provide personalized, actionable sales recommendations to the user based on the data of a specific client.
-  //   Your response must be STRICTLY in Spanish. Do NOT use English.
-
-  //   Here is the data for the client you need to analyze:
-  //   - Client Profile: {{{client}}}
-  //   - Client's Invoice History: {{{invoices}}}
-  //   - All Available Products: {{{allProducts}}}
-  //   - Invoices from other clients (for comparison): {{{similarClientInvoices}}}
-
-  //   Analyze the provided JSON data to generate your recommendations. Look for patterns in their purchase history, payment behavior, current debt, and missing profile information. 
-
-  //   **STRATEGIC GOAL: ROUTINE BUILDING & SYNERGY**
-  //   You must go beyond simple refills. Suggest products that COMPLETE a solution.
-  //   - **Skin Care (Artistry) + Nutrition (Nutrilite):** If they buy skin care, suggest specific supplements like Collagen, Biotin, or Vitamin C.
-  //   - **Routine Completeness:** If they buy a Cleanser, check if they have a Toner or Moisturizer. If not, suggest it.
-  //   - **Home + Personal:** If they buy Laundry detergent, suggest surface cleaners.
-
-  //   When suggesting specific products, use ONLY the product's 'name' from the 'All Available Products' list if possible, or well-known Amway products if missing.
-
-  //   Based on your analysis, provide a list of 3-5 short, concise, and practical tips in the 'insights' array.
-  //   **CRITICAL**: Each string in the 'insights' array MUST start with a single relevant emoji, followed by a single space.
-
-  //   **Scenario-based tips:**
-  //   - **Cross-Sell (High Priority):** "💄 Compraste Artistry? Prueba la Vitamina C para potenciar tu piel desde dentro."
-  //   - **Debt:** "🗓️ Parece que hay un saldo pendiente. Un recordatorio amistoso podría ser útil."
-  //   - **Loyalty:** "🎉 ¡Cliente estrella! Ofrécele un descuento en su próxima compra de Nutrilite."
-  //   - **Relationship:** "🎁 Intenta conseguir su fecha de cumpleaños para un detalle especial."
-
-  //   Generate the 'insights' array now.
-  // `,
   prompt: `
     Usted es el **ASISTENTE DE INTELIGENCIA DE NEGOCIO PRO 360** para el CRM Ventas Claras. Su objetivo es generar la **Siguiente Mejor Acción (NBA)**, maximizando la **rentabilidad, la retención (LTV)** y la **fidelización** del cliente a través de recomendaciones **predictivas y consultivas**.
     
@@ -121,7 +89,6 @@ const salesInsightsPrompt = ai.definePrompt({
 
     Genere el 'insights' array ahora.
   `,
-
 });
 
 const salesInsightsFlow = ai.defineFlow(
@@ -149,20 +116,20 @@ const salesInsightsFlow = ai.defineFlow(
       }
     }
 
-    const cacheCollection = collection(db, 'cacheSugerencias');
-    const cacheDocRef = doc(cacheCollection, clientId);
+    const adminDb = getAdminDb();
+    const cacheDocRef = adminDb.collection('cacheSugerencias').doc(clientId);
 
     // Try to get from cache first
     try {
-      const cacheDocSnap = await getDoc(cacheDocRef);
+      const cacheDocSnap = await cacheDocRef.get();
       const twentyFourHoursAgo = Timestamp.now().seconds - (24 * 60 * 60);
 
-      if (cacheDocSnap.exists()) {
+      if (cacheDocSnap.exists) {
         const cacheData = cacheDocSnap.data();
-        const generatedAt = cacheData.generadaEn as Timestamp;
+        const generatedAt = cacheData?.generadaEn;
 
         if (generatedAt && generatedAt.seconds > twentyFourHoursAgo) {
-          const cachedInsights = cacheData.sugerencia;
+          const cachedInsights = cacheData?.sugerencia;
           // Migration check
           if (!(Array.isArray(cachedInsights) && cachedInsights.length > 0 && typeof cachedInsights[0] === 'string')) {
             return { insights: cachedInsights || [] };
@@ -187,7 +154,7 @@ const salesInsightsFlow = ai.defineFlow(
 
         // Try to save to cache
         try {
-          await setDoc(cacheDocRef, {
+          await cacheDocRef.set({
             clienteId: clientId,
             userId: clientData.userId,
             sugerencia: structuredInsights,
@@ -201,7 +168,7 @@ const salesInsightsFlow = ai.defineFlow(
       }
     } catch (genError) {
       console.error("Error generating AI insights:", genError);
-      throw genError; // Re-throw to be handled by the caller or let Next.js catch it
+      throw genError;
     }
 
     return { insights: [] };
@@ -211,21 +178,26 @@ const salesInsightsFlow = ai.defineFlow(
 export async function toggleInsightCompletion(clientId: string, suggestionId: string): Promise<boolean> {
   if (!clientId || !suggestionId) return false;
 
-  const cacheCollection = collection(db, 'cacheSugerencias');
-  const cacheDocRef = doc(cacheCollection, clientId);
-  const cacheDocSnap = await getDoc(cacheDocRef);
+  const adminDb = getAdminDb();
+  const cacheDocRef = adminDb.collection('cacheSugerencias').doc(clientId);
 
-  if (cacheDocSnap.exists()) {
-    const data = cacheDocSnap.data();
-    const suggestions = data.sugerencia || [];
+  try {
+    const cacheDocSnap = await cacheDocRef.get();
 
-    // Toggle completion
-    const updatedSuggestions = suggestions.map((s: any) =>
-      s.id === suggestionId ? { ...s, completed: !s.completed } : s
-    );
+    if (cacheDocSnap.exists) {
+      const data = cacheDocSnap.data();
+      const suggestions = data?.sugerencia || [];
 
-    await setDoc(cacheDocRef, { ...data, sugerencia: updatedSuggestions });
-    return true;
+      // Toggle completion
+      const updatedSuggestions = suggestions.map((s: any) =>
+        s.id === suggestionId ? { ...s, completed: !s.completed } : s
+      );
+
+      await cacheDocRef.update({ sugerencia: updatedSuggestions });
+      return true;
+    }
+  } catch (e) {
+    console.error("Failed to toggle insight completion", e);
   }
   return false;
 }
