@@ -1,7 +1,7 @@
 import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
 import { ClientService } from '../services/clientService';
 
-export const createClient = onCall({ cors: true }, async (request: CallableRequest) => {
+export const createClient = onCall({ cors: true, maxInstances: 1 }, async (request: CallableRequest) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Debes estar autenticado.');
     }
@@ -9,7 +9,7 @@ export const createClient = onCall({ cors: true }, async (request: CallableReque
     return await ClientService.createClient(request.data, request.auth.uid);
 });
 
-export const updateClient = onCall({ cors: true }, async (request: CallableRequest) => {
+export const updateClient = onCall({ cors: true, maxInstances: 1 }, async (request: CallableRequest) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Debes estar autenticado.');
     }
@@ -23,7 +23,7 @@ export const updateClient = onCall({ cors: true }, async (request: CallableReque
     return { success: true };
 });
 
-export const deleteClient = onCall({ cors: true }, async (request: CallableRequest) => {
+export const deleteClient = onCall({ cors: true, maxInstances: 1 }, async (request: CallableRequest) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Debes estar autenticado.');
     }

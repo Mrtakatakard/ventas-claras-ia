@@ -14,13 +14,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteClient = exports.updateClient = exports.createClient = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const clientService_1 = require("../services/clientService");
-exports.createClient = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.createClient = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'Debes estar autenticado.');
     }
     return await clientService_1.ClientService.createClient(request.data, request.auth.uid);
 });
-exports.updateClient = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.updateClient = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'Debes estar autenticado.');
     }
@@ -31,7 +31,7 @@ exports.updateClient = (0, https_1.onCall)({ cors: true }, async (request) => {
     await clientService_1.ClientService.updateClient(id, data, request.auth.uid);
     return { success: true };
 });
-exports.deleteClient = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.deleteClient = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'Debes estar autenticado.');
     }

@@ -16,7 +16,7 @@ const https_1 = require("firebase-functions/v2/https");
 const productService_1 = require("../services/productService");
 const schema_1 = require("../schema");
 const logger = require("firebase-functions/logger");
-exports.createProduct = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.createProduct = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     try {
         if (!request.auth) {
             throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
@@ -39,7 +39,7 @@ exports.createProduct = (0, https_1.onCall)({ cors: true }, async (request) => {
         throw new https_1.HttpsError('internal', 'Internal error creating product: ' + error.message);
     }
 });
-exports.updateProduct = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.updateProduct = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     try {
         if (!request.auth) {
             throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
@@ -61,7 +61,7 @@ exports.updateProduct = (0, https_1.onCall)({ cors: true }, async (request) => {
         throw new https_1.HttpsError('internal', 'Internal error updating product: ' + error.message);
     }
 });
-exports.deleteProduct = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.deleteProduct = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     try {
         if (!request.auth) {
             throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
@@ -78,7 +78,7 @@ exports.deleteProduct = (0, https_1.onCall)({ cors: true }, async (request) => {
         throw new https_1.HttpsError('internal', 'Internal error deleting product: ' + error.message);
     }
 });
-exports.checkProductCodeExists = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.checkProductCodeExists = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     try {
         if (!request.auth) {
             throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
@@ -96,7 +96,7 @@ exports.checkProductCodeExists = (0, https_1.onCall)({ cors: true }, async (requ
         throw new https_1.HttpsError('internal', 'Internal error checking product code: ' + error.message);
     }
 });
-exports.batchCreateProducts = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.batchCreateProducts = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     try {
         if (!request.auth) {
             throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');

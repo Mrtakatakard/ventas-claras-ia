@@ -9,7 +9,7 @@ const logger = require("firebase-functions/logger");
 const firebase_1 = require("../config/firebase");
 // This is a public-facing function.
 // It's configured with `cors: true` to be callable from the landing page.
-exports.contactRequest = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.contactRequest = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     const { name, email, company, message } = request.data;
     // Basic validation
     if (!name || !email || !company || !message) {

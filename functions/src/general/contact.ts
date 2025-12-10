@@ -9,7 +9,7 @@ import { db } from '../config/firebase';
 
 // This is a public-facing function.
 // It's configured with `cors: true` to be callable from the landing page.
-export const contactRequest = onCall({ cors: true }, async (request) => {
+export const contactRequest = onCall({ cors: true, maxInstances: 1 }, async (request) => {
     const { name, email, company, message } = request.data;
 
     // Basic validation

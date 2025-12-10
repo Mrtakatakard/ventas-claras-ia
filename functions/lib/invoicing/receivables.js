@@ -7,7 +7,7 @@ exports.getAccountsReceivable = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const firebase_1 = require("../config/firebase");
-exports.getAccountsReceivable = (0, https_1.onCall)(async (request) => {
+exports.getAccountsReceivable = (0, https_1.onCall)({ maxInstances: 1 }, async (request) => {
     // 1. Authentication check
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'Debes estar autenticado para realizar esta acción.');

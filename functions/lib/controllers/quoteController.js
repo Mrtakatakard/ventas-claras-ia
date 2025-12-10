@@ -15,7 +15,7 @@ exports.convertQuoteToInvoice = exports.deleteQuote = exports.updateQuote = expo
 const https_1 = require("firebase-functions/v2/https");
 const quoteService_1 = require("../services/quoteService");
 const schema_1 = require("../schema");
-exports.createQuote = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.createQuote = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
@@ -30,7 +30,7 @@ exports.createQuote = (0, https_1.onCall)({ cors: true }, async (request) => {
         throw error;
     }
 });
-exports.updateQuote = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.updateQuote = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
@@ -47,13 +47,13 @@ exports.updateQuote = (0, https_1.onCall)({ cors: true }, async (request) => {
         throw error;
     }
 });
-exports.deleteQuote = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.deleteQuote = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
     return await quoteService_1.quoteService.deleteQuote(request.data.id, request.auth.uid);
 });
-exports.convertQuoteToInvoice = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.convertQuoteToInvoice = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }

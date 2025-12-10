@@ -7,7 +7,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as logger from 'firebase-functions/logger';
 import { db, auth } from '../config/firebase';
 
-export const inviteTeamMember = onCall(async (request) => {
+export const inviteTeamMember = onCall({ maxInstances: 1 }, async (request) => {
     // Ensure the user is authenticated before proceeding.
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Debes estar autenticado para realizar esta acción.');
@@ -33,7 +33,7 @@ export const inviteTeamMember = onCall(async (request) => {
     logger.info(`Iniciando invitación para ${email} por ${request.auth.token.email} (UID: ${inviterUid})`);
 
     try {
-    // 1. Create user in Firebase Auth
+        // 1. Create user in Firebase Auth
         const userRecord = await auth.createUser({
             email: email,
             emailVerified: false,

@@ -7,7 +7,7 @@ exports.inviteTeamMember = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const firebase_1 = require("../config/firebase");
-exports.inviteTeamMember = (0, https_1.onCall)(async (request) => {
+exports.inviteTeamMember = (0, https_1.onCall)({ maxInstances: 1 }, async (request) => {
     var _a;
     // Ensure the user is authenticated before proceeding.
     if (!request.auth) {

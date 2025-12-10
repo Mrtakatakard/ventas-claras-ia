@@ -8,7 +8,7 @@ import * as logger from 'firebase-functions/logger';
 
 import { db } from '../config/firebase';
 
-export const getAccountsReceivable = onCall(async (request) => {
+export const getAccountsReceivable = onCall({ maxInstances: 1 }, async (request) => {
     // 1. Authentication check
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Debes estar autenticado para realizar esta acción.');

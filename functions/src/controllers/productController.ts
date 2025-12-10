@@ -3,7 +3,7 @@ import { productService } from '../services/productService';
 import { createProductSchema, updateProductSchema } from '../schema';
 import * as logger from 'firebase-functions/logger';
 
-export const createProduct = onCall({ cors: true }, async (request: CallableRequest) => {
+export const createProduct = onCall({ cors: true, maxInstances: 1 }, async (request: CallableRequest) => {
     try {
         if (!request.auth) {
             throw new HttpsError('unauthenticated', 'User must be logged in.');
@@ -29,7 +29,7 @@ export const createProduct = onCall({ cors: true }, async (request: CallableRequ
     }
 });
 
-export const updateProduct = onCall({ cors: true }, async (request: CallableRequest) => {
+export const updateProduct = onCall({ cors: true, maxInstances: 1 }, async (request: CallableRequest) => {
     try {
         if (!request.auth) {
             throw new HttpsError('unauthenticated', 'User must be logged in.');
@@ -54,7 +54,7 @@ export const updateProduct = onCall({ cors: true }, async (request: CallableRequ
     }
 });
 
-export const deleteProduct = onCall({ cors: true }, async (request: CallableRequest) => {
+export const deleteProduct = onCall({ cors: true, maxInstances: 1 }, async (request: CallableRequest) => {
     try {
         if (!request.auth) {
             throw new HttpsError('unauthenticated', 'User must be logged in.');
@@ -71,7 +71,7 @@ export const deleteProduct = onCall({ cors: true }, async (request: CallableRequ
     }
 });
 
-export const checkProductCodeExists = onCall({ cors: true }, async (request: CallableRequest) => {
+export const checkProductCodeExists = onCall({ cors: true, maxInstances: 1 }, async (request: CallableRequest) => {
     try {
         if (!request.auth) {
             throw new HttpsError('unauthenticated', 'User must be logged in.');
@@ -89,7 +89,7 @@ export const checkProductCodeExists = onCall({ cors: true }, async (request: Cal
     }
 });
 
-export const batchCreateProducts = onCall({ cors: true }, async (request: CallableRequest) => {
+export const batchCreateProducts = onCall({ cors: true, maxInstances: 1 }, async (request: CallableRequest) => {
     try {
         if (!request.auth) {
             throw new HttpsError('unauthenticated', 'User must be logged in.');

@@ -15,7 +15,7 @@ exports.addPayment = exports.getReceivables = exports.deleteInvoice = exports.up
 const https_1 = require("firebase-functions/v2/https");
 const invoiceService = require("../services/invoiceService");
 const schema_1 = require("../schema");
-exports.createInvoice = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.createInvoice = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
@@ -30,7 +30,7 @@ exports.createInvoice = (0, https_1.onCall)({ cors: true }, async (request) => {
         throw error;
     }
 });
-exports.updateInvoice = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.updateInvoice = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
@@ -49,19 +49,19 @@ exports.updateInvoice = (0, https_1.onCall)({ cors: true }, async (request) => {
         throw error;
     }
 });
-exports.deleteInvoice = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.deleteInvoice = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
     return await invoiceService.deleteInvoice(request.data.id, request.auth.uid);
 });
-exports.getReceivables = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.getReceivables = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
     return await invoiceService.getReceivables(request.auth.uid);
 });
-exports.addPayment = (0, https_1.onCall)({ cors: true }, async (request) => {
+exports.addPayment = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
