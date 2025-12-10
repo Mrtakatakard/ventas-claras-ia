@@ -9,23 +9,23 @@ export const quoteApi = {
     },
 
     create: async (quote: Omit<Quote, 'id' | 'createdAt' | 'isActive' | 'quoteNumber'>): Promise<string> => {
-        const createQuote = httpsCallable(functions, 'quoteController-createQuote');
+        const createQuote = httpsCallable(functions, 'createQuote');
         const result = await createQuote(quote);
         return result.data as string;
     },
 
     update: async (id: string, data: Partial<Quote>): Promise<void> => {
-        const updateQuote = httpsCallable(functions, 'quoteController-updateQuote');
+        const updateQuote = httpsCallable(functions, 'updateQuote');
         await updateQuote({ id, data });
     },
 
     delete: async (id: string): Promise<void> => {
-        const deleteQuote = httpsCallable(functions, 'quoteController-deleteQuote');
+        const deleteQuote = httpsCallable(functions, 'deleteQuote');
         await deleteQuote({ id });
     },
 
     convertToInvoice: async (quoteId: string): Promise<string> => {
-        const convertQuoteToInvoice = httpsCallable(functions, 'quoteController-convertQuoteToInvoice');
+        const convertQuoteToInvoice = httpsCallable(functions, 'convertQuoteToInvoice');
         const result = await convertQuoteToInvoice({ quoteId });
         return result.data as string;
     }
