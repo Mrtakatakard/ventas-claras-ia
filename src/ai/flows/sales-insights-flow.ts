@@ -105,22 +105,17 @@ const salesInsightsFlow = ai.defineFlow(
       // Helper for IDs
       const generateId = () => Math.random().toString(36).substring(2, 15);
 
-      if (!clientId) {
-        try {
-          const { output } = await salesInsightsPrompt(input);
-          return {
-            insights: output ? output.insights.map(text => ({ id: generateId(), text, completed: false })) : []
-          };
-        } catch (e) {
-          console.error("Error generating insights (no client ID):", e);
-          return { insights: [] };
-        }
-      }
+      /* 
+       * TEMPORARY FIX: Disabling server-side caching to resolve 500 Error.
+       * The Admin SDK likely lacks credentials in this environment.
+       * Proceeding with direct AI generation (like smart-refill-flow).
+       */
 
+      /*
       // Initialize Admin DB inside the try block to catch init errors
       const adminDb = getAdminDb();
       const cacheDocRef = adminDb.collection('cacheSugerencias').doc(clientId);
-
+      
       // Try to get from cache first
       try {
         const cacheDocSnap = await cacheDocRef.get();
@@ -140,10 +135,10 @@ const salesInsightsFlow = ai.defineFlow(
         }
       } catch (error) {
         console.warn("Failed to read from cache (ignoring):", error);
-        // Continue to generation if cache fails
       }
+      */
 
-      // Generate new insights
+      // Generate new insights directly
       try {
         const { output } = await salesInsightsPrompt(input);
 
@@ -154,6 +149,7 @@ const salesInsightsFlow = ai.defineFlow(
             completed: false
           }));
 
+          /*
           // Try to save to cache
           try {
             await cacheDocRef.set({
@@ -165,19 +161,18 @@ const salesInsightsFlow = ai.defineFlow(
           } catch (cacheError) {
             console.warn("Failed to save to cache:", cacheError);
           }
+          */
 
           return { insights: structuredInsights };
         }
       } catch (genError) {
         console.error("Error generating AI insights:", genError);
-        // Return empty if generation fails, don't throw 500
         return { insights: [] };
       }
 
       return { insights: [] };
     } catch (globalError) {
       console.error("CRITICAL ERROR in salesInsightsFlow:", globalError);
-      // Fail gracefully returning empty insights to avoid 500 on client
       return { insights: [] };
     }
   }
