@@ -17,6 +17,7 @@ const SalesInsightsInputSchema = z.object({
   invoices: z.string().describe("A JSON string representing the client's invoice history."),
   allProducts: z.string().describe("A JSON string representing all available products in the inventory."),
   similarClientInvoices: z.string().describe("A JSON string representing invoices from other clients to identify trends and cross-selling opportunities."),
+  currentDate: z.string().describe("The current date (ISO format) to calculate elapsed time."),
 });
 export type SalesInsightsInput = z.infer<typeof SalesInsightsInputSchema>;
 
@@ -35,9 +36,12 @@ const SalesInsightsOutputSchema = z.object({
 });
 export type SalesInsightsOutput = z.infer<typeof SalesInsightsOutputSchema>;
 
-export async function getSalesInsights(input: SalesInsightsInput): Promise<SalesInsightsOutput> {
+export async function getSalesInsights(input: Omit<SalesInsightsInput, 'currentDate'>): Promise<SalesInsightsOutput> {
   try {
-    return await salesInsightsFlow(input);
+    return await salesInsightsFlow({
+      ...input,
+      currentDate: new Date().toISOString().split('T')[0] // Inject server-side date YYYY-MM-DD
+    });
   } catch (error) {
     console.error("Unhandled error in getSalesInsights Server Action:", error);
     // Return empty insights to prevent client crash
@@ -60,11 +64,19 @@ const salesInsightsPrompt = ai.definePrompt({
   input: { schema: SalesInsightsInputSchema },
   output: { schema: SalesInsightsPromptOutput },
   prompt: `
-    Usted es el **ASISTENTE DE INTELIGENCIA DE NEGOCIO PRO 4.0** para el CRM Ventas Claras. Su misión es generar la **Siguiente Mejor Acción (NBA)**, maximizando la **rentabilidad, la retención (LTV)** y la **fidelización** del cliente a través de recomendaciones **predictivas, consultivas y basadas en el perfil**.
+    Usted es el **ASISTENTE DE INTELIGENCIA DE NEGOCIO PRO 4.0** para el CRM Ventas Claras. Su misión es actuar como el **COACH DE VENTAS** del usuario (el vendedor).
     
-    Su análisis debe ser exhaustivo, estratégico y 100% accionarable, ideal para el crecimiento de **Pequeñas Pymes y Emprendedores**. Su tono es profesional, proactivo y se enfoca en enseñar valor al vendedor.
-    Su respuesta debe ser **ESTRICTAMENTE en español**.
+    **CONTEXTO TEMPORAL**:
+    - Fecha Actual: {{{currentDate}}}
+    - Use esta fecha para calcular EXACTAMENTE cuánto tiempo ha pasado desde la última compra.
+    
+    **REGLA DE ORO**: NUNCA hable como si fuera el cliente. Usted le habla AL VENDEDOR.
+    - INCORRECTO: "Te recomiendo comprar Vitamina C para tus defensas." (Esto es hablarle al cliente)
+    - CORRECTO: "Sugiere Vitamina C al cliente para reforzar sus defensas." (Esto es hablarle al vendedor)
+    - CORRECTO: "Ofrécele el kit de limpieza, ya que hace 30 días compró el detergente."
 
+    Su objetivo es generar la **Siguiente Mejor Acción (NBA)** para que el vendedor cierre más ventas.
+    
     **DATOS DEL CLIENTE A ANALIZAR:**
     - Perfil del Cliente: {{{client}}}
     - Historial de Facturas (detalles, fechas y montos): {{{invoices}}}
@@ -161,6 +173,10 @@ const salesInsightsFlow = ai.defineFlow(
           refillCandidates: []
         };
       }
+
+      // Default return if no output generated
+      return { insights: [], refillCandidates: [] };
+
     } catch (globalError) {
       console.error("CRITICAL ERROR in salesInsightsFlow:", globalError);
       return {
