@@ -152,13 +152,25 @@ const salesInsightsFlow = ai.defineFlow(
         }
       } catch (genError) {
         console.error("Error generating AI insights:", genError);
-        return { insights: [], refillCandidates: [] };
+        return {
+          insights: [{
+            id: 'gen-error',
+            text: `Gen Error: ${(genError as Error).message}`,
+            completed: false
+          }],
+          refillCandidates: []
+        };
       }
-
-      return { insights: [], refillCandidates: [] };
     } catch (globalError) {
       console.error("CRITICAL ERROR in salesInsightsFlow:", globalError);
-      return { insights: [], refillCandidates: [] };
+      return {
+        insights: [{
+          id: 'error-' + Math.random(),
+          text: `Error AI: ${(globalError as Error).message}`,
+          completed: false
+        }],
+        refillCandidates: []
+      };
     }
   }
 );
