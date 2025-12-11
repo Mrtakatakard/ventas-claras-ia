@@ -11,35 +11,39 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteClient = exports.updateClient = exports.createClient = void 0;
+exports.clients = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const clientService_1 = require("../services/clientService");
-exports.createClient = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
+exports.clients = (0, https_1.onCall)({ cors: true, maxInstances: 1, cpu: 0.5 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'Debes estar autenticado.');
     }
-    return await clientService_1.ClientService.createClient(request.data, request.auth.uid);
-});
-exports.updateClient = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
-    if (!request.auth) {
-        throw new https_1.HttpsError('unauthenticated', 'Debes estar autenticado.');
+    const { action, data } = request.data;
+    try {
+        switch (action) {
+            case 'create':
+                return await clientService_1.ClientService.createClient(data, request.auth.uid);
+            case 'update': {
+                const { id } = data, updateData = __rest(data, ["id"]);
+                if (!id)
+                    throw new https_1.HttpsError('invalid-argument', 'El ID del cliente es obligatorio para actualizar.');
+                await clientService_1.ClientService.updateClient(id, updateData, request.auth.uid);
+                return { success: true };
+            }
+            case 'delete': {
+                const { id } = data;
+                if (!id)
+                    throw new https_1.HttpsError('invalid-argument', 'El ID del cliente es obligatorio para eliminar.');
+                await clientService_1.ClientService.deleteClient(id, request.auth.uid);
+                return { success: true };
+            }
+            default:
+                throw new https_1.HttpsError('invalid-argument', `Acción desconocida: ${action}`);
+        }
     }
-    const _a = request.data, { id } = _a, data = __rest(_a, ["id"]);
-    if (!id) {
-        throw new https_1.HttpsError('invalid-argument', 'El ID del cliente es obligatorio.');
+    catch (error) {
+        console.error(`Error in clients controller (${action}):`, error);
+        throw error;
     }
-    await clientService_1.ClientService.updateClient(id, data, request.auth.uid);
-    return { success: true };
-});
-exports.deleteClient = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
-    if (!request.auth) {
-        throw new https_1.HttpsError('unauthenticated', 'Debes estar autenticado.');
-    }
-    const { id } = request.data;
-    if (!id) {
-        throw new https_1.HttpsError('invalid-argument', 'El ID del cliente es obligatorio.');
-    }
-    await clientService_1.ClientService.deleteClient(id, request.auth.uid);
-    return { success: true };
 });
 //# sourceMappingURL=clientController.js.map

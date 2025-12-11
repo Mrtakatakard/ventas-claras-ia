@@ -176,6 +176,15 @@ export interface NCFSequence {
   updatedAt: Date;
 }
 
+export interface TaxSettings {
+  id: string;
+  name: string; // e.g. "ITBIS 18%"
+  rate: number; // e.g. 0.18
+  isDefault?: boolean;
+  userId: string;
+  isActive: boolean;
+}
+
 export interface UserProfile {
   id: string; // UID from Auth
   email: string;

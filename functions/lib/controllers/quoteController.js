@@ -11,52 +11,42 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.convertQuoteToInvoice = exports.deleteQuote = exports.updateQuote = exports.createQuote = void 0;
+exports.quotes = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const quoteService_1 = require("../services/quoteService");
 const schema_1 = require("../schema");
-exports.createQuote = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
+exports.quotes = (0, https_1.onCall)({ cors: true, maxInstances: 1, cpu: 0.5 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
     }
+    const { action, data } = request.data;
+    const userId = request.auth.uid;
     try {
-        const data = schema_1.createQuoteSchema.parse(request.data);
-        return await quoteService_1.quoteService.createQuote(data, request.auth.uid);
+        switch (action) {
+            case 'create': {
+                const input = schema_1.createQuoteSchema.parse(data);
+                return await quoteService_1.quoteService.createQuote(input, userId);
+            }
+            case 'update': {
+                const { id } = data, updateData = __rest(data, ["id"]);
+                const input = schema_1.updateQuoteSchema.parse(Object.assign({ id }, updateData));
+                const { id: _id } = input, cleanData = __rest(input, ["id"]);
+                return await quoteService_1.quoteService.updateQuote(id, cleanData, userId);
+            }
+            case 'delete':
+                return await quoteService_1.quoteService.deleteQuote(data.id, userId);
+            case 'convertToInvoice':
+                return await quoteService_1.quoteService.convertQuoteToInvoice(data.id, userId);
+            default:
+                throw new https_1.HttpsError('invalid-argument', `Unknown action: ${action}`);
+        }
     }
     catch (error) {
+        console.error(`Error in quotes controller (${action}):`, error);
         if (error.issues) {
             throw new https_1.HttpsError('invalid-argument', 'Validation error', error.issues);
         }
         throw error;
     }
-});
-exports.updateQuote = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
-    if (!request.auth) {
-        throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
-    }
-    try {
-        const _a = request.data, { id } = _a, data = __rest(_a, ["id"]);
-        const validatedData = schema_1.updateQuoteSchema.parse(Object.assign({ id }, data));
-        const { id: _id } = validatedData, updateData = __rest(validatedData, ["id"]);
-        return await quoteService_1.quoteService.updateQuote(id, updateData, request.auth.uid);
-    }
-    catch (error) {
-        if (error.issues) {
-            throw new https_1.HttpsError('invalid-argument', 'Validation error', error.issues);
-        }
-        throw error;
-    }
-});
-exports.deleteQuote = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
-    if (!request.auth) {
-        throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
-    }
-    return await quoteService_1.quoteService.deleteQuote(request.data.id, request.auth.uid);
-});
-exports.convertQuoteToInvoice = (0, https_1.onCall)({ cors: true, maxInstances: 1 }, async (request) => {
-    if (!request.auth) {
-        throw new https_1.HttpsError('unauthenticated', 'User must be logged in.');
-    }
-    return await quoteService_1.quoteService.convertQuoteToInvoice(request.data.quoteId, request.auth.uid);
 });
 //# sourceMappingURL=quoteController.js.map

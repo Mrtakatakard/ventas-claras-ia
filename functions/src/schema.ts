@@ -73,6 +73,12 @@ export const createNCFSequenceSchema = z.object({
     expirationDate: z.string().optional(),
 });
 
+export const createTaxSchema = z.object({
+    name: z.string().min(1, "Name is required"),
+    rate: z.number().min(0, "Rate must be positive"),
+    isDefault: z.boolean().optional(),
+});
+
 export const updateInvoiceSchema = createInvoiceSchema.partial().extend({
     id: z.string(),
 });

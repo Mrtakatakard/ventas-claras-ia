@@ -5,9 +5,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteInvoiceAndAdjustStock = void 0;
 const https_1 = require("firebase-functions/v2/https");
-const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
-const db = admin.firestore();
+const firebase_1 = require("../config/firebase");
 exports.deleteInvoiceAndAdjustStock = (0, https_1.onCall)(async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'Debes estar autenticado para realizar esta acción.');
@@ -17,9 +16,9 @@ exports.deleteInvoiceAndAdjustStock = (0, https_1.onCall)(async (request) => {
         throw new https_1.HttpsError('invalid-argument', 'Se requiere el ID de la factura.');
     }
     const uid = request.auth.uid;
-    const invoiceRef = db.collection('invoices').doc(invoiceId);
+    const invoiceRef = firebase_1.db.collection('invoices').doc(invoiceId);
     try {
-        await db.runTransaction(async (transaction) => {
+        await firebase_1.db.runTransaction(async (transaction) => {
             var _a;
             // 1. Read the invoice
             const invoiceDoc = await transaction.get(invoiceRef);
@@ -41,7 +40,7 @@ exports.deleteInvoiceAndAdjustStock = (0, https_1.onCall)(async (request) => {
             // 4. Adjust product stock for each item in the invoice
             if (invoice.items && invoice.items.length > 0) {
                 for (const item of invoice.items) {
-                    const productRef = db.collection('products').doc(item.productId);
+                    const productRef = firebase_1.db.collection('products').doc(item.productId);
                     const productDoc = await transaction.get(productRef);
                     if (productDoc.exists) {
                         const currentStock = ((_a = productDoc.data()) === null || _a === void 0 ? void 0 : _a.stock) || 0;

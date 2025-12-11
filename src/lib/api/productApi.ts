@@ -22,32 +22,32 @@ const removeUndefined = (obj: any): any => {
 
 export const productApi = {
     create: async (data: Omit<Product, 'id' | 'createdAt' | 'isActive' | 'userId'>) => {
-        const createProduct = httpsCallable(functions, "createProduct");
+        const productsFn = httpsCallable(functions, "products");
         const payload = removeUndefined(data);
         console.log("Creating product with payload:", JSON.stringify(payload, null, 2));
-        const result = await createProduct(payload);
+        const result = await productsFn({ action: 'create', data: payload });
         return result.data as string; // Returns the new product ID
     },
 
     update: async (id: string, data: Partial<Product>) => {
-        const updateProduct = httpsCallable(functions, "updateProduct");
-        await updateProduct(removeUndefined({ id, ...data }));
+        const productsFn = httpsCallable(functions, "products");
+        await productsFn({ action: 'update', data: removeUndefined({ id, ...data }) });
     },
 
     delete: async (id: string) => {
-        const deleteProduct = httpsCallable(functions, "deleteProduct");
-        await deleteProduct({ id });
+        const productsFn = httpsCallable(functions, "products");
+        await productsFn({ action: 'delete', data: { id } });
     },
 
     checkCode: async (code: string, excludeId?: string): Promise<boolean> => {
-        const checkProductCodeExists = httpsCallable(functions, "checkProductCodeExists");
-        const result = await checkProductCodeExists({ code, excludeId });
+        const productsFn = httpsCallable(functions, "products");
+        const result = await productsFn({ action: 'checkCode', data: { code, excludeId } });
         return result.data as boolean;
     },
 
-    batchCreate: async (products: Omit<Product, 'id' | 'createdAt' | 'isActive' | 'userId'>[]) => {
-        const batchCreateProducts = httpsCallable(functions, "batchCreateProducts");
-        const sanitizedProducts = products.map(p => removeUndefined(p));
-        await batchCreateProducts({ products: sanitizedProducts });
+    batchCreate: async (productsList: Omit<Product, 'id' | 'createdAt' | 'isActive' | 'userId'>[]) => {
+        const productsFn = httpsCallable(functions, "products");
+        const sanitizedProducts = productsList.map(p => removeUndefined(p));
+        await productsFn({ action: 'batchCreate', data: { products: sanitizedProducts } });
     }
 };

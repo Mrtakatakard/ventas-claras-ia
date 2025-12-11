@@ -3,31 +3,25 @@
  * @fileoverview Main entry point for Firebase Functions.
  * This file should only import and export functions from other modules.
  */
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __exportStar = (this && this.__exportStar) || function(m, exports) {
-    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.general = exports.team = void 0;
+exports.taxes = exports.ncf = exports.quotes = exports.invoices = exports.products = exports.clients = void 0;
 // import { app, db } from "./config/firebase";
 // export { app, db };
 // Exporting specific functions for better organization
-exports.team = require("./team/invite");
-__exportStar(require("./invoicing/receivables"), exports);
+// export * as team from './team/invite';
+// export * from "./invoicing/receivables";
 // export * as deleteInvoice from "./invoicing/deleteInvoice"; // Deprecated
-exports.general = require("./general/contact");
-__exportStar(require("./controllers/clientController"), exports);
-__exportStar(require("./controllers/productController"), exports);
-__exportStar(require("./controllers/invoiceController"), exports);
-__exportStar(require("./controllers/quoteController"), exports);
+// export * as general from './general/contact';
+var clientController_1 = require("./controllers/clientController");
+Object.defineProperty(exports, "clients", { enumerable: true, get: function () { return clientController_1.clients; } });
+var productController_1 = require("./controllers/productController");
+Object.defineProperty(exports, "products", { enumerable: true, get: function () { return productController_1.products; } });
+var invoiceController_1 = require("./controllers/invoiceController");
+Object.defineProperty(exports, "invoices", { enumerable: true, get: function () { return invoiceController_1.invoices; } });
+var quoteController_1 = require("./controllers/quoteController");
+Object.defineProperty(exports, "quotes", { enumerable: true, get: function () { return quoteController_1.quotes; } });
+var ncfController_1 = require("./controllers/ncfController");
+Object.defineProperty(exports, "ncf", { enumerable: true, get: function () { return ncfController_1.ncf; } });
+var taxController_1 = require("./controllers/taxController");
+Object.defineProperty(exports, "taxes", { enumerable: true, get: function () { return taxController_1.taxes; } });
 //# sourceMappingURL=index.js.map

@@ -1,14 +1,11 @@
-
 /**
  * @fileoverview Cloud Function to migrate data by adding isActive: true to all documents in specified collections.
  * This is intended as a one-time utility function.
  */
 
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
-
-const db = admin.firestore();
+import { db } from '../config/firebase';
 
 export const migrateDataToIsActive = onCall({ cors: true }, async (request) => {
     if (!request.auth) {
@@ -21,7 +18,7 @@ export const migrateDataToIsActive = onCall({ cors: true }, async (request) => {
     const collectionsWithError: string[] = [];
 
     try {
-    // Primero, obtenemos la lista de todas las colecciones existentes en la base de datos.
+        // Primero, obtenemos la lista de todas las colecciones existentes en la base de datos.
         const allCollections = await db.listCollections();
         const collectionIds = allCollections.map((col) => col.id);
 

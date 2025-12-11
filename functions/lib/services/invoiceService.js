@@ -6,11 +6,17 @@ const firebase_1 = require("../config/firebase");
 const functions = require("firebase-functions");
 const firestore_1 = require("firebase-admin/firestore");
 const counterService_1 = require("./counterService");
+const ncfService_1 = require("./ncfService");
 const createInvoice = async (invoiceData, userId) => {
     const invoiceId = firebase_1.db.collection('invoices').doc().id;
     // Generate sequential invoice number
     const invoiceNumber = await counterService_1.counterService.getNextNumber('invoices', userId, 'INV');
-    const newInvoice = Object.assign(Object.assign({}, invoiceData), { id: invoiceId, userId, createdAt: new Date(), isActive: true, status: 'pendiente', balanceDue: invoiceData.total, payments: [], invoiceNumber: invoiceNumber });
+    // Generate NCF if type is provided
+    let ncf = '';
+    if (invoiceData.ncfType && invoiceData.ncfType !== 'Sin NCF') {
+        ncf = await ncfService_1.ncfService.getNextNCF(userId, invoiceData.ncfType);
+    }
+    const newInvoice = Object.assign(Object.assign({}, invoiceData), { id: invoiceId, userId, createdAt: new Date(), isActive: true, status: 'pendiente', balanceDue: invoiceData.total, payments: [], invoiceNumber: invoiceNumber, ncf: ncf || undefined, ncfType: invoiceData.ncfType });
     await firebase_1.db.runTransaction(async (transaction) => {
         var _a;
         // 1. Check stock availability and decrement

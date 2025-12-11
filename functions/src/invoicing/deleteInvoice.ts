@@ -3,10 +3,8 @@
  */
 
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
-
-const db = admin.firestore();
+import { db } from '../config/firebase';
 
 export const deleteInvoiceAndAdjustStock = onCall(async (request) => {
     if (!request.auth) {

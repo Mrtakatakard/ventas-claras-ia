@@ -1,7 +1,5 @@
-import * as admin from 'firebase-admin';
+import { db } from '../config/firebase';
 import { Client } from '../types';
-
-const db = admin.firestore();
 
 export const ClientRepository = {
     async create(client: Omit<Client, 'id'>): Promise<Client> {

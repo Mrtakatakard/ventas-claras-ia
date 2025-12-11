@@ -42,8 +42,9 @@ export function NCFSettings() {
             const data = await ncfApi.getSequences();
             setSequences(data);
         } catch (error) {
-            console.error(error);
-            toast({ title: "Error", description: "No se pudieron cargar las secuencias de NCF.", variant: "destructive" });
+            console.warn("Could not fetch NCF sequences (treating as empty):", error);
+            // toast({ title: "Error", description: "No se pudieron cargar las secuencias de NCF.", variant: "destructive" });
+            setSequences([]);
         } finally {
             setLoading(false);
         }

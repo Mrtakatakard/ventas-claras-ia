@@ -17,7 +17,7 @@ export function useAuth() {
     const userProfileRef = doc(db, "users", uid);
     const docSnap = await getDoc(userProfileRef);
     if (docSnap.exists()) {
-        setUserProfile({ id: docSnap.id, ...docSnap.data() } as UserProfile);
+      setUserProfile({ id: docSnap.id, ...docSnap.data() } as UserProfile);
     }
   }, []);
 
@@ -25,30 +25,31 @@ export function useAuth() {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
         setUser(user);
-        
+
         const userProfileRef = doc(db, "users", user.uid);
         const unsubscribeProfile = onSnapshot(userProfileRef, async (docSnap) => {
-            if (docSnap.exists()) {
-                const profile = { id: docSnap.id, ...docSnap.data() } as UserProfile;
-                
-                setUserProfile(profile);
+          if (docSnap.exists()) {
+            const profile = { id: docSnap.id, ...docSnap.data() } as UserProfile;
 
-                // If the user is pending, the function activates them.
-                // The snapshot listener will then automatically receive the update.
-                if (profile.status === 'pending') {
-                  await activateTeamMember(user.uid);
-                }
-            } else {
-                console.error(`User ${user.uid} authenticated but has no profile in Firestore. Signing out.`);
-                setUserProfile(null);
-                await signOut(auth);
+            setUserProfile(profile);
+
+            // If the user is pending, the function activates them.
+            // The snapshot listener will then automatically receive the update.
+            if (profile.status === 'pending') {
+              await activateTeamMember(user.uid);
             }
-            // CRITICAL: Set loading to false only AFTER the first snapshot is processed.
-            setLoading(false);
-        }, (error) => {
-            console.error("Error listening to user profile:", error);
+          } else {
+            console.warn(`User ${user.uid} authenticated but has no profile in Firestore.`);
+            // Do not sign out automatically, as this causes issues if the profile creation is slightly delayed
+            // or if we want to handle the "no profile" state in the UI.
             setUserProfile(null);
-            setLoading(false);
+          }
+          // CRITICAL: Set loading to false only AFTER the first snapshot is processed.
+          setLoading(false);
+        }, (error) => {
+          console.error("Error listening to user profile:", error);
+          setUserProfile(null);
+          setLoading(false);
         });
 
         // This is a cleanup function for the auth state change.

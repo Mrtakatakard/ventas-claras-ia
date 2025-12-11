@@ -4,18 +4,18 @@ import { Client } from "../types";
 
 export const clientApi = {
     create: async (data: Omit<Client, "id" | "userId" | "createdAt" | "isActive">) => {
-        const createClient = httpsCallable(functions, "createClient");
-        const result = await createClient(data);
+        const clientsFn = httpsCallable(functions, "clients");
+        const result = await clientsFn({ action: 'create', data });
         return result.data as Client;
     },
 
     update: async (id: string, data: Partial<Client>) => {
-        const updateClient = httpsCallable(functions, "updateClient");
-        await updateClient({ id, ...data });
+        const clientsFn = httpsCallable(functions, "clients");
+        await clientsFn({ action: 'update', data: { id, ...data } });
     },
 
     delete: async (id: string) => {
-        const deleteClient = httpsCallable(functions, "deleteClient");
-        await deleteClient({ id });
+        const clientsFn = httpsCallable(functions, "clients");
+        await clientsFn({ action: 'delete', data: { id } });
     }
 };

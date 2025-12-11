@@ -4,14 +4,14 @@ import { NCFSequence } from '../types';
 
 export const ncfApi = {
     getSequences: async (): Promise<NCFSequence[]> => {
-        const getNCFSequencesFn = httpsCallable<void, NCFSequence[]>(functions, 'getNCFSequences');
-        const result = await getNCFSequencesFn();
+        const ncfFn = httpsCallable<any, NCFSequence[]>(functions, 'ncf');
+        const result = await ncfFn({ action: 'getSequences', data: {} });
         return result.data;
     },
 
     createSequence: async (data: Omit<NCFSequence, 'id' | 'userId' | 'isActive' | 'updatedAt'>): Promise<string> => {
-        const createNCFSequenceFn = httpsCallable<any, string>(functions, 'createNCFSequence');
-        const result = await createNCFSequenceFn(data);
+        const ncfFn = httpsCallable<any, string>(functions, 'ncf');
+        const result = await ncfFn({ action: 'create', data });
         return result.data;
     }
 };

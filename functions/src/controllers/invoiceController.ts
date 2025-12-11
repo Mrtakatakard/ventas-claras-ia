@@ -2,76 +2,54 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as invoiceService from '../services/invoiceService';
 import { createInvoiceSchema, updateInvoiceSchema, addPaymentSchema } from '../schema';
 
-export const createInvoice = onCall({ cors: true, maxInstances: 1, cpu: 0.5 }, async (request) => {
+export const invoices = onCall({ cors: true, maxInstances: 1, cpu: 0.5 }, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'User must be logged in.');
     }
+
+    const { action, data } = request.data;
+    const userId = request.auth.uid;
+
     try {
-        const data = createInvoiceSchema.parse(request.data);
-        return await invoiceService.createInvoice(data, request.auth.uid);
-    } catch (error: any) {
-        if (error.issues) {
-            throw new HttpsError('invalid-argument', 'Validation error', error.issues);
+        switch (action) {
+            case 'create': {
+                const validatedData = createInvoiceSchema.parse(data);
+                return await invoiceService.createInvoice(validatedData, userId);
+            }
+
+            case 'update': {
+                const { id, ...updateData } = data;
+                const validatedData = updateInvoiceSchema.parse({ id, ...updateData });
+                const { id: _id, ...cleanData } = validatedData;
+                return await invoiceService.updateInvoice(id, cleanData, userId);
+            }
+
+            case 'delete':
+                return await invoiceService.deleteInvoice(data.id, userId);
+
+            case 'getReceivables':
+                return await invoiceService.getReceivables(userId);
+
+            case 'addPayment': {
+                const validatedData = addPaymentSchema.parse(data);
+                const { invoiceId, ...paymentData } = validatedData;
+
+                const servicePaymentData = {
+                    amount: paymentData.amount,
+                    paymentDate: paymentData.date,
+                    method: paymentData.method,
+                    note: paymentData.note,
+                    imageUrl: paymentData.imageUrl,
+                };
+
+                return await invoiceService.addPayment(invoiceId, servicePaymentData, userId);
+            }
+
+            default:
+                throw new HttpsError('invalid-argument', `Unknown action: ${action}`);
         }
-        throw error;
-    }
-});
-
-export const updateInvoice = onCall({ cors: true, maxInstances: 1, cpu: 0.5 }, async (request) => {
-    if (!request.auth) {
-        throw new HttpsError('unauthenticated', 'User must be logged in.');
-    }
-    try {
-        const { id, ...data } = request.data;
-        // Validate partial update data
-        const validatedData = updateInvoiceSchema.parse({ id, ...data });
-        // We only pass the data part to the service, id is separate
-        const { id: _id, ...updateData } = validatedData;
-        return await invoiceService.updateInvoice(id, updateData, request.auth.uid);
     } catch (error: any) {
-        if (error.issues) {
-            throw new HttpsError('invalid-argument', 'Validation error', error.issues);
-        }
-        throw error;
-    }
-});
-
-export const deleteInvoice = onCall({ cors: true, maxInstances: 1, cpu: 0.5 }, async (request) => {
-    if (!request.auth) {
-        throw new HttpsError('unauthenticated', 'User must be logged in.');
-    }
-    return await invoiceService.deleteInvoice(request.data.id, request.auth.uid);
-});
-
-export const getReceivables = onCall({ cors: true, maxInstances: 1, cpu: 0.5 }, async (request) => {
-    if (!request.auth) {
-        throw new HttpsError('unauthenticated', 'User must be logged in.');
-    }
-    return await invoiceService.getReceivables(request.auth.uid);
-});
-
-export const addPayment = onCall({ cors: true, maxInstances: 1, cpu: 0.5 }, async (request) => {
-    if (!request.auth) {
-        throw new HttpsError('unauthenticated', 'User must be logged in.');
-    }
-    try {
-        const validatedData = addPaymentSchema.parse(request.data);
-        const { invoiceId, ...paymentData } = validatedData;
-
-        // Map the flat payment data to the structure expected by the service
-        // The service expects: Omit<Payment, 'id' | 'receiptNumber' | 'currency' | 'status'>
-        // Our Zod schema validates: amount, date, method, note, imageUrl
-
-        const servicePaymentData = {
-            amount: paymentData.amount,
-            paymentDate: paymentData.date,
-            method: paymentData.method,
-            note: paymentData.note,
-            imageUrl: paymentData.imageUrl,
-        };
-
-        return await invoiceService.addPayment(invoiceId, servicePaymentData, request.auth.uid);
-    } catch (error: any) {
+        console.error(`Error in invoices controller (${action}):`, error);
         if (error.issues) {
             throw new HttpsError('invalid-argument', 'Validation error', error.issues);
         }

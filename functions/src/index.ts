@@ -15,8 +15,9 @@
 // export * from "./invoicing/receivables";
 // export * as deleteInvoice from "./invoicing/deleteInvoice"; // Deprecated
 // export * as general from './general/contact';
-export * from './controllers/clientController';
-export * from './controllers/productController';
-export * from './controllers/invoiceController';
-export * from './controllers/quoteController';
-export * from './controllers/ncfController';
+export { clients } from './controllers/clientController';
+export { products } from './controllers/productController';
+export { invoices } from './controllers/invoiceController';
+export { quotes } from './controllers/quoteController';
+export { ncf } from './controllers/ncfController';
+export { taxes } from './controllers/taxController';

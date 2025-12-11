@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateProductSchema = exports.createProductSchema = exports.updateQuoteSchema = exports.createQuoteSchema = exports.addPaymentSchema = exports.updateInvoiceSchema = exports.createInvoiceSchema = exports.productBatchSchema = exports.paymentSchema = exports.invoiceItemSchema = exports.addressSchema = void 0;
+exports.updateProductSchema = exports.createProductSchema = exports.updateQuoteSchema = exports.createQuoteSchema = exports.addPaymentSchema = exports.updateInvoiceSchema = exports.createTaxSchema = exports.createNCFSequenceSchema = exports.createInvoiceSchema = exports.productBatchSchema = exports.paymentSchema = exports.invoiceItemSchema = exports.addressSchema = void 0;
 const zod_1 = require("zod");
 // Helper schemas
 exports.addressSchema = zod_1.z.object({
@@ -57,6 +57,21 @@ exports.createInvoiceSchema = zod_1.z.object({
     quoteId: zod_1.z.string().optional(),
     includeITBIS: zod_1.z.boolean().optional(),
     itbisRate: zod_1.z.number().optional(),
+    ncfType: zod_1.z.string().optional(),
+});
+exports.createNCFSequenceSchema = zod_1.z.object({
+    name: zod_1.z.string().min(1, "Name is required"),
+    typeCode: zod_1.z.string().min(2, "Type code (e.g. B01) is required"),
+    prefix: zod_1.z.string().min(1, "Prefix is required"),
+    startNumber: zod_1.z.number().int().min(1),
+    endNumber: zod_1.z.number().int().min(1),
+    currentNumber: zod_1.z.number().int().optional(), // Defaults to startNumber if not provided
+    expirationDate: zod_1.z.string().optional(),
+});
+exports.createTaxSchema = zod_1.z.object({
+    name: zod_1.z.string().min(1, "Name is required"),
+    rate: zod_1.z.number().min(0, "Rate must be positive"),
+    isDefault: zod_1.z.boolean().optional(),
 });
 exports.updateInvoiceSchema = exports.createInvoiceSchema.partial().extend({
     id: zod_1.z.string(),
