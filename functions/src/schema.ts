@@ -60,6 +60,17 @@ export const createInvoiceSchema = z.object({
     quoteId: z.string().optional(),
     includeITBIS: z.boolean().optional(),
     itbisRate: z.number().optional(),
+    ncfType: z.string().optional(),
+});
+
+export const createNCFSequenceSchema = z.object({
+    name: z.string().min(1, "Name is required"),
+    typeCode: z.string().min(2, "Type code (e.g. B01) is required"),
+    prefix: z.string().min(1, "Prefix is required"),
+    startNumber: z.number().int().min(1),
+    endNumber: z.number().int().min(1),
+    currentNumber: z.number().int().optional(), // Defaults to startNumber if not provided
+    expirationDate: z.string().optional(),
 });
 
 export const updateInvoiceSchema = createInvoiceSchema.partial().extend({

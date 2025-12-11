@@ -19,3 +19,4 @@ export * from './controllers/clientController';
 export * from './controllers/productController';
 export * from './controllers/invoiceController';
 export * from './controllers/quoteController';
+export * from './controllers/ncfController';

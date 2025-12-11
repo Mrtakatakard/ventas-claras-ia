@@ -11,10 +11,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, Printer, Loader2, CreditCard, Clipboard, Info, MessageSquare } from "lucide-react";
+import { Download, Printer, Loader2, CreditCard, Clipboard, Info, MessageSquare, FileCode } from "lucide-react";
 import { WhatsAppMessageDialog } from '@/components/whatsapp-message-dialog';
 import { getInvoice, getClient } from '@/lib/firebase/service';
 import { getWhatsAppMessage } from '@/ai/flows/whatsapp-generator-flow';
+import { generateInvoiceXML, downloadXML } from '@/lib/xml-utils';
 import type { Invoice, Payment, InvoiceItem, Client } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddPaymentForm } from '@/components/add-payment-form';
@@ -436,6 +437,18 @@ export default function InvoiceDetailPage() {
     doc.save(`recibo-${payment.receiptNumber}.pdf`);
   };
 
+  const handleExportXML = () => {
+    if (!invoice) return;
+    try {
+      const xml = generateInvoiceXML(invoice);
+      downloadXML(`eCF-${invoice.ncf || invoice.invoiceNumber}.xml`, xml);
+      toast({ title: "XML Exportado", description: "El archivo electrónica se ha descargado." });
+    } catch (error) {
+      console.error("XML Error", error);
+      toast({ title: "Error", description: "No se pudo generar el XML.", variant: "destructive" });
+    }
+  };
+
   const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case "pagada": return "default";
@@ -498,6 +511,14 @@ export default function InvoiceDetailPage() {
             <span className="sm:hidden">PDF</span>
             <span className="hidden sm:inline">Descargar PDF</span>
           </Button>
+
+          {invoice.ncf && (
+            <Button variant="outline" onClick={handleExportXML} className="flex-1 sm:flex-none">
+              <FileCode className="mr-2 h-4 w-4" />
+              <span className="sr-only sm:not-sr-only">XML</span>
+            </Button>
+          )}
+
           <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
             <Button onClick={() => setIsPaymentDialogOpen(true)} disabled={invoice.balanceDue <= 0} className="flex-1 sm:flex-none">
               <CreditCard className="mr-2 h-4 w-4" />

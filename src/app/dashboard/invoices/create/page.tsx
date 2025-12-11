@@ -17,7 +17,8 @@ import { PlusCircle, Trash2, PackageSearch, Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/hooks';
 import { getClients, getProducts, getClientTypes } from '@/lib/firebase/service';
 import { invoiceApi } from '@/lib/api/invoiceApi';
-import type { Client, Product, InvoiceItem, Invoice, ClientType, Address } from '@/lib/types';
+import { ncfApi } from '@/lib/api/ncfApi';
+import type { Client, Product, InvoiceItem, Invoice, ClientType, Address, NCFSequence } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ClientSelector } from '@/components/client-selector';
 import { Switch } from '@/components/ui/switch';
@@ -44,11 +45,13 @@ export default function CreateInvoicePage() {
     const [clients, setClients] = useState<Client[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
+    const [ncfSequences, setNcfSequences] = useState<NCFSequence[]>([]);
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
     const [selectedClientId, setSelectedClientId] = useState<string | undefined>(undefined);
     const [selectedAddressId, setSelectedAddressId] = useState<string | undefined>();
+    const [selectedNCFType, setSelectedNCFType] = useState<string>('Sin NCF');
     const [invoiceCurrency, setInvoiceCurrency] = useState<'DOP' | 'USD'>('DOP');
     const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
     const [dueDate, setDueDate] = useState('');
@@ -70,10 +73,11 @@ export default function CreateInvoicePage() {
             if (!userId) return;
             setLoading(true);
             try {
-                const [clientsData, productsData, clientTypesData] = await Promise.all([
+                const [clientsData, productsData, clientTypesData, sequencesData] = await Promise.all([
                     getClients(userId),
                     getProducts(userId),
-                    getClientTypes(userId)
+                    getClientTypes(userId),
+                    ncfApi.getSequences()
                 ]);
 
                 const clientTypesMap = new Map(clientTypesData.map(ct => [ct.id, ct.name]));
@@ -85,6 +89,7 @@ export default function CreateInvoicePage() {
                 setClients(clientsWithTypeName);
                 setProducts(productsData);
                 setClientTypes(clientTypesData);
+                setNcfSequences(sequencesData);
             } catch (error) {
                 toast({ title: "Error", description: "No se pudieron cargar los datos necesarios.", variant: "destructive" });
             } finally {
@@ -348,6 +353,7 @@ export default function CreateInvoicePage() {
             balanceDue: newTotal,
             includeITBIS: includeITBIS,
             itbisRate: itbisRate,
+            ncfType: selectedNCFType,
             isActive: true,
             userId,
             createdAt: new Date(),
@@ -582,6 +588,29 @@ export default function CreateInvoicePage() {
                                         <div className="space-y-2">
                                             <Label htmlFor="due-date">Fecha de Vencimiento</Label>
                                             <Input id="due-date" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="ncf-type">Tipo de Comprobante (NCF)</Label>
+                                            <Select value={selectedNCFType} onValueChange={setSelectedNCFType}>
+                                                <SelectTrigger id="ncf-type"><SelectValue placeholder="Selecciona tipo de comprobante" /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Sin NCF">Sin NCF (Uso Interno)</SelectItem>
+                                                    {ncfSequences
+                                                        .filter(s => s.currentNumber <= s.endNumber)
+                                                        .map(seq => (
+                                                            <SelectItem key={seq.id} value={seq.typeCode}>
+                                                                {seq.typeCode} - {seq.name}
+                                                            </SelectItem>
+                                                        ))
+                                                    }
+                                                </SelectContent>
+                                            </Select>
+                                            {selectedNCFType !== 'Sin NCF' && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    Se asignará el siguiente comprobante disponible.
+                                                </p>
+                                            )}
                                         </div>
                                     </CardContent>
                                 </AccordionContent>

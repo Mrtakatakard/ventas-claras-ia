@@ -4,12 +4,19 @@ import { db } from '../config/firebase';
 import * as functions from 'firebase-functions';
 import { FieldValue } from 'firebase-admin/firestore';
 import { counterService } from './counterService';
+import { ncfService } from './ncfService';
 
 export const createInvoice = async (invoiceData: Omit<Invoice, 'id' | 'createdAt' | 'isActive' | 'status' | 'balanceDue' | 'payments' | 'invoiceNumber' | 'userId'>, userId: string): Promise<string> => {
     const invoiceId = db.collection('invoices').doc().id;
 
     // Generate sequential invoice number
     const invoiceNumber = await counterService.getNextNumber('invoices', userId, 'INV');
+
+    // Generate NCF if type is provided
+    let ncf = '';
+    if (invoiceData.ncfType && invoiceData.ncfType !== 'Sin NCF') {
+        ncf = await ncfService.getNextNCF(userId, invoiceData.ncfType);
+    }
 
     const newInvoice: Invoice = {
         ...invoiceData,
@@ -21,6 +28,8 @@ export const createInvoice = async (invoiceData: Omit<Invoice, 'id' | 'createdAt
         balanceDue: invoiceData.total,
         payments: [],
         invoiceNumber: invoiceNumber,
+        ncf: ncf || undefined,
+        ncfType: invoiceData.ncfType,
     };
 
     await db.runTransaction(async (transaction) => {

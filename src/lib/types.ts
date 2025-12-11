@@ -158,6 +158,22 @@ export interface Invoice {
   userId: string;
   createdAt: Date;
   isActive: boolean;
+  ncf?: string;
+  ncfType?: string;
+}
+
+export interface NCFSequence {
+  id: string;
+  name: string; // e.g., "Crédito Fiscal", "Consumidor Final"
+  typeCode: string; // e.g., "B01", "B02", "E31"
+  prefix: string; // e.g., "B010000"
+  currentNumber: number;
+  startNumber: number;
+  endNumber: number;
+  expirationDate?: string;
+  userId: string;
+  isActive: boolean;
+  updatedAt: Date;
 }
 
 export interface UserProfile {
