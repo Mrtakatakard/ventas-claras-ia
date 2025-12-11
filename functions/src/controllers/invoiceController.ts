@@ -2,7 +2,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as invoiceService from '../services/invoiceService';
 import { createInvoiceSchema, updateInvoiceSchema, addPaymentSchema } from '../schema';
 
-export const createInvoice = onCall({ cors: true, maxInstances: 1 }, async (request) => {
+export const createInvoice = onCall({ cors: true, maxInstances: 1, cpu: 0.5 }, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'User must be logged in.');
     }
@@ -17,7 +17,7 @@ export const createInvoice = onCall({ cors: true, maxInstances: 1 }, async (requ
     }
 });
 
-export const updateInvoice = onCall({ cors: true, maxInstances: 1 }, async (request) => {
+export const updateInvoice = onCall({ cors: true, maxInstances: 1, cpu: 0.5 }, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'User must be logged in.');
     }
@@ -36,21 +36,21 @@ export const updateInvoice = onCall({ cors: true, maxInstances: 1 }, async (requ
     }
 });
 
-export const deleteInvoice = onCall({ cors: true, maxInstances: 1 }, async (request) => {
+export const deleteInvoice = onCall({ cors: true, maxInstances: 1, cpu: 0.5 }, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'User must be logged in.');
     }
     return await invoiceService.deleteInvoice(request.data.id, request.auth.uid);
 });
 
-export const getReceivables = onCall({ cors: true, maxInstances: 1 }, async (request) => {
+export const getReceivables = onCall({ cors: true, maxInstances: 1, cpu: 0.5 }, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'User must be logged in.');
     }
     return await invoiceService.getReceivables(request.auth.uid);
 });
 
-export const addPayment = onCall({ cors: true, maxInstances: 1 }, async (request) => {
+export const addPayment = onCall({ cors: true, maxInstances: 1, cpu: 0.5 }, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'User must be logged in.');
     }

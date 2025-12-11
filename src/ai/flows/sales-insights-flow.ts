@@ -138,11 +138,28 @@ const salesInsightsFlow = ai.defineFlow(
       // Helper for IDs
       const generateId = () => Math.random().toString(36).substring(2, 15);
 
-      /* 
-       * TEMPORARY FIX: Disabling server-side caching to resolve 500 Error.
-       * The Admin SDK likely lacks credentials in this environment.
-       * Proceeding with direct AI generation (like smart-refill-flow).
-       */
+      const adminDb = getAdminDb();
+      const cacheRef = adminDb.collection('cacheSugerencias').doc(clientId);
+
+      try {
+        const doc = await cacheRef.get();
+        if (doc.exists) {
+          const data = doc.data();
+          const lastUpdated = data?.lastUpdated?.toDate();
+          if (lastUpdated) {
+            const hoursDiff = (new Date().getTime() - lastUpdated.getTime()) / (1000 * 60 * 60);
+            if (hoursDiff < 24) {
+              console.log("Returning cached insights for client:", clientId);
+              return {
+                insights: data?.sugerencia || [],
+                refillCandidates: data?.refillCandidates || []
+              };
+            }
+          }
+        }
+      } catch (cacheError) {
+        console.warn("Cache check failed, proceeding to generate:", cacheError);
+      }
 
       // Generate new insights directly
       try {
@@ -156,6 +173,17 @@ const salesInsightsFlow = ai.defineFlow(
           }));
 
           const refillCandidates = output.refillCandidates || [];
+
+          // Save to Cache
+          try {
+            await cacheRef.set({
+              sugerencia: structuredInsights,
+              refillCandidates: refillCandidates,
+              lastUpdated: Timestamp.now()
+            });
+          } catch (saveError) {
+            console.error("Failed to save insights to cache:", saveError);
+          }
 
           return {
             insights: structuredInsights,

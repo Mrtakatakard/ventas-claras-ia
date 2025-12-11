@@ -11,10 +11,10 @@
 
 
 // Exporting specific functions for better organization
-export * as team from './team/invite';
-export * from "./invoicing/receivables";
+// export * as team from './team/invite';
+// export * from "./invoicing/receivables";
 // export * as deleteInvoice from "./invoicing/deleteInvoice"; // Deprecated
-export * as general from './general/contact';
+// export * as general from './general/contact';
 export * from './controllers/clientController';
 export * from './controllers/productController';
 export * from './controllers/invoiceController';
