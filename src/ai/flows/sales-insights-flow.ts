@@ -20,23 +20,39 @@ const SalesInsightsInputSchema = z.object({
 });
 export type SalesInsightsInput = z.infer<typeof SalesInsightsInputSchema>;
 
-// The final output returned to the frontend
+// Output Schema defined closer to usage for clarity
 const SalesInsightsOutputSchema = z.object({
   insights: z.array(z.object({
     id: z.string(),
     text: z.string(),
     completed: z.boolean()
   })).describe('An array of personalized sales tips.'),
+  refillCandidates: z.array(z.object({
+    productName: z.string(),
+    reason: z.string(),
+    urgency: z.enum(['HIGH', 'MEDIUM', 'LOW']),
+  })).optional().describe('List of products that likely need a refill.'),
 });
 export type SalesInsightsOutput = z.infer<typeof SalesInsightsOutputSchema>;
 
 export async function getSalesInsights(input: SalesInsightsInput): Promise<SalesInsightsOutput> {
-  return salesInsightsFlow(input);
+  try {
+    return await salesInsightsFlow(input);
+  } catch (error) {
+    console.error("Unhandled error in getSalesInsights Server Action:", error);
+    // Return empty insights to prevent client crash
+    return { insights: [], refillCandidates: [] };
+  }
 }
 
-// The raw output from the AI Prompt (strings only)
+// The raw output from the AI Prompt (strings only for insights, objects for refills)
 const SalesInsightsPromptOutput = z.object({
   insights: z.array(z.string()).describe('An array of 3 to 5 personalized and actionable sales tips.'),
+  refillCandidates: z.array(z.object({
+    productName: z.string(),
+    reason: z.string().describe("Why this product needs a refill"),
+    urgency: z.enum(['HIGH', 'MEDIUM', 'LOW']),
+  })).describe('List of products that likely need a refill based on purchase history (>30 days).'),
 });
 
 const salesInsightsPrompt = ai.definePrompt({
@@ -57,43 +73,42 @@ const salesInsightsPrompt = ai.definePrompt({
     
     ---
     
-    ### FASE 1: ANÁLISIS PREDICTIVO Y PATRONES DE CONSUMO
-    Analice la data, enfocándose en cuatro métricas clave para generar una estrategia completa:
-    1.  **INFERENCIA DE DOLOR/META (Motivación):** ¿Qué problema o meta de vida intenta resolver el cliente? (Ej: Fitness, Piel Joven, Hogar Ecológico).
-    2.  **PATRÓN DE RECOMPRA Y VOLUMEN (Estabilidad):** ¿Cuáles son sus productos rutinarios? ¿Cuál es su volumen de compra habitual (Ej: 3 unidades de X cada mes)?
-    3.  **RIESGO DE ABANDONO (Churn):** Evalúe el retraso en la reposición vs. la frecuencia esperada (más de 15 días de retraso = riesgo alto).
-    4.  **OPORTUNIDAD DE VENTA CRUZADA POR PERFIL:** Usando 'similarClientInvoices', identifique los productos que los clientes con un perfil de consumo similar compraron *adicionalmente* a los productos de este cliente.
-    
-    ---
+    ### FASE 1: ANÁLISIS DE RECOMPRA Y STOCK (Smart Refill)
+    Identifique productos consumibles (Vitaminas, Hogar, Cuidado Personal) comprados hace más de 30-45 días que NO han sido recompra dos.
+    - Genere una lista estructurada en 'refillCandidates'.
+    - Urgencia HIGH: > 45 días sin compra.
+    - Urgencia MEDIUM: 30-45 días.
+    - Urgencia LOW: < 30 días (pero casi vencido).
+    - Ignorar productos duraderos.
 
     ### FASE 2: META ESTRATÉGICA (La Siguiente Mejor Acción - NBA)
-    Su objetivo principal es recomendar la acción de **MÁXIMO VALOR**. Las prioridades son fijas:
+    Analice las metricas clave para generar una estrategia completa:
+    1.  **INFERENCIA DE DOLOR/META:** ¿Qué problema intenta resolver?
+    2.  **PATRÓN DE RECOMPRA:** ¿Cuáles son sus productos rutinarios?
+    3.  **RIESGO DE ABANDONO (Churn):** ¿Hay compras atrasadas?
+    4.  **VENTA CRUZADA:** ¿Qué compran clientes similares?
 
-    * **Prioridad 1 (Venta de Crecimiento y Profundización):**
-        * **1A. Venta por Perfil (Introducción):** Basado en el punto 4 de la FASE 1. Sugiera el producto adicional que el cliente *similar* sí compró.
-        * **1B. Venta por Desafío/Kit (AOV):** Sugiera el kit de solución completa (2-3 productos) enmarcado como una **corrección crítica** (estrategia consultiva) para maximizar el resultado.
-    * **Prioridad 2 (Estabilidad y Recurrencia):**
-        * **2A. Garantía de Recompra/Volumen:** Si se acerca la fecha de recompra de un producto rutinario (Punto 2), sugiera **asegurar el pedido en su volumen habitual** o, si hay un evento inferido/festivo (Ej: Navidad), sugiera un volumen mayor.
-        * **2B. Retención y Reciprocidad:** Si el **Riesgo de Abandono (Churn)** es alto (Punto 3). Sugiera enviar una pieza de **valor gratuito (un tip, una guía, un enlace)** antes de pedir la reposición.
-    * **Prioridad 3 (Servicio y Fidelización):** Sugiera acciones de servicio preventivas (ej. verificar la última entrega) o un **Upsell a línea Premium** si el cliente es fiel.
+    Las prioridades para 'insights' son:
+    * **Prioridad 1 (Venta de Crecimiento):** Venta Cruzada por Perfil (lo que otros compran) o Kits Complejos.
+    * **Prioridad 2 (Estabilidad):** Recordatorios de stock (que NO estén ya en 'refillCandidates') o incentivos de volumen.
+    * **Prioridad 3 (Fidelización):** Mensajes de relación (cumpleaños, servicio).
     
     - **Uso de Nombres:** Use SOLO el 'name' de la lista 'All Available Products'.
-    - **Contexto Pyme:** Busque en el perfil o historial de facturas cualquier indicio de un evento o evento de la industria, e incorpore una sugerencia de temas de conversación o suministros relacionados.
+    - **Contexto Pyme:** Busque eventos de temporada o industria.
     
     ---
 
     ### FASE 3: GENERACIÓN DE RECOMENDACIONES
-    Genere de **4 a 5 recomendaciones** que sean **nuevas, concisas y prácticas** en el array 'insights'.
+    Genere de **4 a 5 recomendaciones** que sean **nuevas, concisas y prácticas** en el array 'insights' (texto con emoji).
+    Genere la lista de **Candidatos a Recompra** en 'refillCandidates' (objetos estructurados).
 
-    **CRÍTICO**: Cada string en el 'insights' array DEBE comenzar con un **solo emoji relevante**, seguido de un **solo espacio**. Priorice las acciones de Crecimiento (1A, 1B).
+    **CRÍTICO**: Cada string en el 'insights' array DEBE comenzar con un **solo emoji relevante**, seguido de un **solo espacio**.
+    **Ejemplos Insights:**
+    - 👥 **Venta por Perfil:** Clientes similares compran **Vitamina C**. Sugerir para reforzar defensas.
+    - 💡 **Venta por Desafío:** Compra Proteína, pero faltan **Aminos**. Completar el kit fitness.
+    - 🎁 **Servicio:** Preguntar por satisfacción del último pedido.
 
-    **EJEMPLOS DE TONO Y FORMATO DEFINITIVO (Pyme/Emprendedor):**
-    - 👥 **Venta por Perfil:** Clientes con perfil similar al suyo también compran la **Vitamina C**. Sugiere esta **defensa** adicional para su régimen de bienestar.
-    - 📦 **Garantía de Volumen:** 📆 El cliente siempre compra 3 unidades de **Detergente SA8** al inicio de mes. Asegure su pedido completo para evitar escasez.
-    - 💡 **Venta por Desafío:** Vemos la compra de Proteína, pero no fibra. Sugiera la **Fibra en Polvo Nutrilite** justificando: "Su cuerpo necesita la fibra para la absorción óptima de la proteína."
-    - 🎁 **Servicio y Conversación:** 🗓️ Si el cliente es una pyme, pregunte si todo salió bien con el último pedido, o si tiene un **evento/lanzamiento** pronto para suministrarle algo.
-
-    Genere el 'insights' array ahora.
+    Genere la respuesta JSON ahora.
   `,
 });
 
@@ -117,33 +132,6 @@ const salesInsightsFlow = ai.defineFlow(
        * Proceeding with direct AI generation (like smart-refill-flow).
        */
 
-      /*
-      // Initialize Admin DB inside the try block to catch init errors
-      const adminDb = getAdminDb();
-      const cacheDocRef = adminDb.collection('cacheSugerencias').doc(clientId);
-      
-      // Try to get from cache first
-      try {
-        const cacheDocSnap = await cacheDocRef.get();
-        const twentyFourHoursAgo = Timestamp.now().seconds - (24 * 60 * 60);
-
-        if (cacheDocSnap.exists) {
-          const cacheData = cacheDocSnap.data();
-          const generatedAt = cacheData?.generadaEn;
-
-          if (generatedAt && generatedAt.seconds > twentyFourHoursAgo) {
-            const cachedInsights = cacheData?.sugerencia;
-            // Migration check
-            if (!(Array.isArray(cachedInsights) && cachedInsights.length > 0 && typeof cachedInsights[0] === 'string')) {
-              return { insights: cachedInsights || [] };
-            }
-          }
-        }
-      } catch (error) {
-        console.warn("Failed to read from cache (ignoring):", error);
-      }
-      */
-
       // Generate new insights directly
       try {
         const { output } = await salesInsightsPrompt(input);
@@ -155,31 +143,22 @@ const salesInsightsFlow = ai.defineFlow(
             completed: false
           }));
 
-          /*
-          // Try to save to cache
-          try {
-            await cacheDocRef.set({
-              clienteId: clientId,
-              userId: clientData.userId,
-              sugerencia: structuredInsights,
-              generadaEn: Timestamp.now(),
-            });
-          } catch (cacheError) {
-            console.warn("Failed to save to cache:", cacheError);
-          }
-          */
+          const refillCandidates = output.refillCandidates || [];
 
-          return { insights: structuredInsights };
+          return {
+            insights: structuredInsights,
+            refillCandidates: refillCandidates
+          };
         }
       } catch (genError) {
         console.error("Error generating AI insights:", genError);
-        return { insights: [] };
+        return { insights: [], refillCandidates: [] };
       }
 
-      return { insights: [] };
+      return { insights: [], refillCandidates: [] };
     } catch (globalError) {
       console.error("CRITICAL ERROR in salesInsightsFlow:", globalError);
-      return { insights: [] };
+      return { insights: [], refillCandidates: [] };
     }
   }
 );

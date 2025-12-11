@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { getClient, getInvoices, getProducts, getClientTypes } from '@/lib/firebase/service';
 import { invoiceApi } from '@/lib/api/invoiceApi';
 import { clientApi } from '@/lib/api/clientApi';
-import { getSmartRefill } from '@/ai/flows/smart-refill-flow';
 import { getWhatsAppMessage } from '@/ai/flows/whatsapp-generator-flow';
 import { getSalesInsights, toggleInsightCompletion } from '@/ai/flows/sales-insights-flow';
 import { WhatsAppMessageDialog } from '@/components/whatsapp-message-dialog';
@@ -164,36 +163,26 @@ export default function ClientDetailPage() {
         setInsightsLoading(true);
         try {
           // Prepare purchase history for the AI
-          const purchaseHistory = invoices.flatMap(inv =>
-            inv.items.map(item => `${item.productName} (Qty: ${item.quantity}, Date: ${inv.issueDate})`)
-          ).join('\n');
+          // const purchaseHistory = invoices.flatMap(inv =>
+          //   inv.items.map(item => `${item.productName} (Qty: ${item.quantity}, Date: ${inv.issueDate})`)
+          // ).join('\n');
 
           // Prepare similar invoices context
           const similarInvoicesData = similarClientInvoices.slice(0, 50).map(inv => ({
             items: inv.items.map(i => i.productName)
           }));
 
-          const [refillResult, insightsResult] = await Promise.all([
-            getSmartRefill({
-              clientName: client.name,
-              clientProfile: JSON.stringify(client),
-              purchaseHistory: purchaseHistory,
-              currentDate: new Date().toISOString().split('T')[0],
-            }),
-            getSalesInsights({
-              client: JSON.stringify(client),
-              invoices: JSON.stringify(invoices),
-              allProducts: JSON.stringify(products.map(p => ({ name: p.name, category: p.category }))),
-              similarClientInvoices: JSON.stringify(similarInvoicesData)
-            })
-          ]);
+          const { insights, refillCandidates } = await getSalesInsights({
+            client: JSON.stringify(client),
+            invoices: JSON.stringify(invoices),
+            allProducts: JSON.stringify(products.map(p => ({ name: p.name, category: p.category }))),
+            similarClientInvoices: JSON.stringify(similarInvoicesData)
+          });
 
-          setRefillOpportunities(refillResult.refillCandidates);
+          setRefillOpportunities(refillCandidates || []);
 
-          // Merge SmartRefill general suggestions with SalesInsights
-          const smartSuggestions = refillResult.generalSuggestions || [];
-          const expertInsights = insightsResult.insights.map(item => {
-            const text = item.text || item as unknown as string; // Handle legacy string or new object
+          const expertInsights = insights.map(item => {
+            const text = item.text || item as unknown as string;
             const id = item.id || `legacy-${Math.random()}`;
             const completed = item.completed || false;
 
@@ -212,7 +201,7 @@ export default function ClientDetailPage() {
             };
           });
 
-          setGeneralSuggestions([...smartSuggestions, ...expertInsights]);
+          setGeneralSuggestions(expertInsights);
           logAnalyticsEvent('ai_insights_viewed', { client_id: id });
         } catch (error) {
           console.error("Error fetching AI insights:", error);
