@@ -1,10 +1,15 @@
 'use client';
 
-import { BookOpenCheck, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { auth, firebaseConfig } from '@/lib/firebase/config';
+import {
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  GoogleAuthProvider,
+  signInWithPopup
+} from 'firebase/auth';
+import { auth } from '@/lib/firebase/config';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,16 +44,37 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/dashboard');
     } catch (error: any) {
-      let description = "Correo o contraseña no válidos. Si has sido invitado, busca en tu correo un enlace para establecer tu contraseña.";
-      if (error.code === 'auth/operation-not-allowed') {
-        description = "Este dominio no está autorizado para iniciar sesión. Por favor, añádelo en la configuración de Firebase Authentication.";
-      }
-       toast({
+      let description = "Correo o contraseña no válidos.";
+      if (error.code === 'auth/user-not-found') description = "No encontramos una cuenta con este correo.";
+      if (error.code === 'auth/wrong-password') description = "Contraseña incorrecta.";
+
+      toast({
         title: 'Error al iniciar sesión',
         description: description,
         variant: 'destructive',
       });
       setPassword('');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setIsSubmitting(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      // Determine if new user or existing?
+      // For now, simpler: Login -> Dashboard. 
+      // If no org, dashboard should redirect or show setup.
+      router.push('/dashboard');
+    } catch (error: any) {
+      console.error("Google Auth Error:", error);
+      toast({
+        title: 'Error de Autenticación',
+        description: "No se pudo iniciar sesión con Google.",
+        variant: 'destructive',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -68,24 +94,14 @@ export default function LoginPage() {
       await sendPasswordResetEmail(auth, resetEmail);
       toast({
         title: 'Correo Enviado',
-        description: 'Si tu correo está registrado, recibirás un enlace. Revisa tu bandeja de entrada y la carpeta de spam.',
+        description: 'Si tu correo está registrado, recibirás un enlace.',
       });
       setResetEmail('');
     } catch (error: any) {
-      console.error("Error sending password reset email:", error);
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-email') {
-         toast({
-            title: 'Correo Enviado',
-            description: 'Si tu correo está registrado, recibirás un enlace. Revisa tu bandeja de entrada y la carpeta de spam.',
-         });
-         setResetEmail('');
-      } else {
-         toast({
-            title: 'Error al enviar correo',
-            description: 'No se pudo enviar el correo de restablecimiento. Verifica el correo e inténtalo de nuevo.',
-            variant: 'destructive',
-         });
-      }
+      toast({
+        title: 'Aviso', // Neutral title for security
+        description: 'Si tu correo está registrado, recibirás un enlace.',
+      });
     } finally {
       setIsResetting(false);
     }
@@ -99,9 +115,29 @@ export default function LoginPage() {
             <Logo />
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight">Bienvenido de nuevo</CardTitle>
-          <CardDescription>Ingresa tu correo para acceder a tu cuenta.</CardDescription>
+          <CardDescription>Accede a tu cuenta de Ventas Claras</CardDescription>
         </CardHeader>
         <CardContent>
+
+          <Button variant="outline" className="w-full py-6 mb-6 gap-2" onClick={handleGoogleLogin} disabled={isSubmitting}>
+            <svg className="h-5 w-5" viewBox="0 0 24 24">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+            </svg>
+            Continuar con Google
+          </Button>
+
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">O inicia sesión</span>
+            </div>
+          </div>
+
           <form onSubmit={handleAuth} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Correo electrónico</Label>
@@ -117,40 +153,40 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                    <Label htmlFor="password">Contraseña</Label>
-                     <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="link" type="button" className="p-0 h-auto text-xs font-normal">¿Olvidaste tu contraseña?</Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Restablecer Contraseña</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Ingresa tu correo electrónico y te enviaremos un enlace para que puedas restablecer tu contraseña.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <div className="space-y-2">
-                          <Label htmlFor="reset-email">Correo electrónico</Label>
-                          <Input
-                            id="reset-email"
-                            type="email"
-                            placeholder="nombre@ejemplo.com"
-                            value={resetEmail}
-                            onChange={(e) => setResetEmail(e.target.value)}
-                            disabled={isResetting}
-                            autoComplete="email"
-                          />
-                        </div>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel disabled={isResetting}>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={handlePasswordReset} disabled={isResetting}>
-                            {isResetting ? <Loader2 className="animate-spin" /> : 'Enviar Enlace'}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                </div>
+              <div className="flex justify-between items-center">
+                <Label htmlFor="password">Contraseña</Label>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="link" type="button" className="p-0 h-auto text-xs font-normal">¿Olvidaste tu contraseña?</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Restablecer Contraseña</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Ingresa tu correo electrónico y te enviaremos un enlace para que puedas restablecer tu contraseña.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-email">Correo electrónico</Label>
+                      <Input
+                        id="reset-email"
+                        type="email"
+                        placeholder="nombre@ejemplo.com"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        disabled={isResetting}
+                        autoComplete="email"
+                      />
+                    </div>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isResetting}>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={handlePasswordReset} disabled={isResetting}>
+                        {isResetting ? <Loader2 className="animate-spin" /> : 'Enviar Enlace'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
               <Input
                 id="password"
                 type="password"
@@ -164,6 +200,11 @@ export default function LoginPage() {
             <Button type="submit" className="w-full text-lg py-6" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="animate-spin" /> : 'Iniciar Sesión'}
             </Button>
+
+            <div className="text-center text-sm text-muted-foreground mt-4">
+              ¿No tienes cuenta? <a href="/register" className="text-primary hover:underline font-bold">Crear Cuenta Gratis</a>
+            </div>
+
           </form>
         </CardContent>
       </Card>

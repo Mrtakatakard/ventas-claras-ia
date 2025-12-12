@@ -7,7 +7,7 @@ import { defineString } from 'firebase-functions/params';
 // Define the API Key parameter (matching Genkit standard)
 const googleApiKey = defineString('GOOGLE_GENAI_API_KEY');
 
-export const scanInvoice = onCall({ maxInstances: 5, memory: '512MiB' }, async (request) => {
+export const scanInvoice = onCall({ maxInstances: 5, memory: '512MiB', cors: true }, async (request) => {
     // 1. Authentication Check
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Debes iniciar sesión para usar la IA.');
@@ -126,8 +126,18 @@ export const scanInvoice = onCall({ maxInstances: 5, memory: '512MiB' }, async (
         const text = response.text();
 
         // Parse JSON from Markdown code block if present
-        const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        const data = JSON.parse(jsonString);
+        let jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+        // Repair common JSON errors (optional, but good for MVP)
+        // jsonString = jsonRepair(jsonString); 
+
+        let data;
+        try {
+            data = JSON.parse(jsonString);
+        } catch (parseError: any) {
+            logger.error("MAGIC_IMPORT_PARSE_ERROR", { uid, rawText: text, error: parseError.message });
+            throw new HttpsError('internal', 'La IA devolvió un formato inválido. Por favor intenta de nuevo.');
+        }
 
         // 5. Log Success
         logger.info("MAGIC_IMPORT_SUCCESS", { uid, orgId, processingTime: 'unknown' });
@@ -139,6 +149,11 @@ export const scanInvoice = onCall({ maxInstances: 5, memory: '512MiB' }, async (
 
         // If it was a Quota error, send it back clearly
         if (error.code === 'resource-exhausted') {
+            throw error;
+        }
+
+        // If it was our Parse Error, send it back clearly
+        if (error.code === 'internal' && error.message.includes('formato inválido')) {
             throw error;
         }
 

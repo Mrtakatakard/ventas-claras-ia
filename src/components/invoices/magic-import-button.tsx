@@ -6,6 +6,7 @@ import { Loader2, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/lib/firebase/config';
+import imageCompression from 'browser-image-compression';
 
 interface ScannedItem {
     description: string;
@@ -35,23 +36,62 @@ export function MagicImportButton({ onDataScanned, disabled }: MagicImportButton
         const file = e.target.files?.[0];
         if (!file) return;
 
+        // Check if file is an image
+        if (!file.type.startsWith('image/')) {
+            toast({
+                title: "Formato Incorrecto",
+                description: "Por favor selecciona una imagen (PNG, JPG, JPEG).",
+                variant: "destructive"
+            });
+            e.target.value = ''; // Reset
+            return;
+        }
+
         if (file.size > 5 * 1024 * 1024) { // 5MB Limit
             toast({
                 title: "Archivo muy grande",
                 description: "Por favor usa una imagen de menos de 5MB.",
                 variant: "destructive"
             });
+            e.target.value = ''; // Reset
             return;
         }
 
         setLoading(true);
 
         try {
-            // 1. Convert to Base64
-            const base64 = await toBase64(file);
+            // 1. Compress Image (CTO Audit Improvement)
+            const options = {
+                maxSizeMB: 0.8, // Resize to ~800KB
+                maxWidthOrHeight: 1200, // HD Quality is enough for OCR
+                useWebWorker: true,
+                fileType: 'image/jpeg' // Force Output Type
+            };
 
-            // 2. Call Backend
-            const scanFunction = httpsCallable(functions, 'ai-scanInvoice');
+            let compressedFile: File | Blob = file;
+            try {
+                const compressed = await imageCompression(file, options);
+                if (compressed instanceof Blob || compressed instanceof File) {
+                    compressedFile = compressed;
+                } else {
+                    console.warn("Compression result was not a Blob/File, using original.");
+                }
+            } catch (compressionError) {
+                console.warn("Compression failed, using original file:", compressionError);
+                // Fallback to original
+            }
+
+            // Final sanity check: if somehow we still don't have a Blob (unlikely), force original
+            if (!(compressedFile instanceof Blob)) {
+                console.warn("compressedFile is not a Blob, forcing original file.");
+                compressedFile = file;
+            }
+
+            // 2. Convert to Base64
+            const base64 = await toBase64(compressedFile);
+
+            // 3. Call Backend
+            const scanFunction = httpsCallable(functions, 'scanInvoice');
             const result = await scanFunction({ imageBase64: base64 });
 
             const data = result.data as { success: boolean, data: ScannedData };
@@ -72,6 +112,8 @@ export function MagicImportButton({ onDataScanned, disabled }: MagicImportButton
 
             if (error.code === 'resource-exhausted') { // Quota exceeded
                 msg = "¡Te quedaste sin créditos de IA! Recarga para seguir usando la magia.";
+            } else if (error.message) {
+                msg = error.message;
             }
 
             toast({
@@ -86,12 +128,16 @@ export function MagicImportButton({ onDataScanned, disabled }: MagicImportButton
         }
     };
 
-    const toBase64 = (file: File): Promise<string> => {
+    const toBase64 = (file: File | Blob): Promise<string> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = error => reject(error);
+            try {
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = error => reject(error);
+            } catch (e) {
+                reject(e);
+            }
         });
     };
 
@@ -117,7 +163,7 @@ export function MagicImportButton({ onDataScanned, disabled }: MagicImportButton
                 ) : (
                     <Sparkles className="h-4 w-4" />
                 )}
-                {loading ? 'Analizando...' : 'Magic Import'}
+                {loading ? 'Analizando...' : 'Escanear Factura (IA)'}
             </Button>
         </>
     );

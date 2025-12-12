@@ -117,7 +117,7 @@ function AccountsReceivableContent() {
   };
 
   const { sortedInvoices, totalReceivableDOP, totalReceivableUSD } = useMemo(() => {
-    let sortableItems = [...invoices].filter(invoice =>
+    let sortableItems = [...(invoices || [])].filter(invoice =>
       invoice.invoiceNumber.toLowerCase().includes(filter.toLowerCase()) ||
       invoice.clientName.toLowerCase().includes(filter.toLowerCase()) ||
       invoice.status.toLowerCase().includes(filter.toLowerCase())
@@ -143,11 +143,11 @@ function AccountsReceivableContent() {
       });
     }
 
-    const totalDOP = invoices
+    const totalDOP = (invoices || [])
       .filter(inv => inv.currency === 'DOP' || !inv.currency)
       .reduce((sum, inv) => sum + inv.balanceDue, 0);
 
-    const totalUSD = invoices
+    const totalUSD = (invoices || [])
       .filter(inv => inv.currency === 'USD')
       .reduce((sum, inv) => sum + inv.balanceDue, 0);
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     createUserWithEmailAndPassword,
@@ -33,6 +33,7 @@ export default function RegisterPage() {
     // Form State
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState(''); // New State
     const [name, setName] = useState('');
     const [companyName, setCompanyName] = useState('');
     const [industry, setIndustry] = useState('retail');
@@ -48,16 +49,10 @@ export default function RegisterPage() {
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
 
-            // We check if we need to collect company details
-            // In a real app we might check Firestore first if user profile exists
-            // For now, we assume if they land here, they might need setup.
-            // But to be smart: if they already have an Org, backend creates logic is idempotent or checks usage.
-            // Actually, createAccount checks "if user exists".
-
             setCurrentUser(user);
             setName(user.displayName || '');
             setEmail(user.email || '');
-            setStep('company-details'); // Move to step 2
+            setStep('company-details');
 
         } catch (error: any) {
             console.error("Google Auth Error:", error);
@@ -73,6 +68,17 @@ export default function RegisterPage() {
 
     const handleEmailRegister = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validation: Confirm Password
+        if (password !== confirmPassword) {
+            toast({
+                title: 'Las contraseñas no coinciden',
+                description: 'Por favor verifica que ambas contraseñas sean iguales.',
+                variant: 'destructive',
+            });
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -119,7 +125,6 @@ export default function RegisterPage() {
 
             let desc = "Error al configurar la cuenta.";
             if (error.code === 'functions/already-exists') {
-                // User already has account, just redirect
                 router.push('/dashboard');
                 return;
             }
@@ -252,6 +257,21 @@ export default function RegisterPage() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 disabled={isSubmitting}
+                            />
+                        </div>
+
+                        {/* Updated: Confirm Password Field */}
+                        <div className="space-y-2">
+                            <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+                            <Input
+                                id="confirmPassword"
+                                type="password"
+                                required
+                                minLength={6}
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                disabled={isSubmitting}
+                                placeholder="Repite tu contraseña"
                             />
                         </div>
 

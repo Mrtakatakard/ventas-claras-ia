@@ -278,8 +278,8 @@ export const getAccountsReceivableFromFunction = async (): Promise<Invoice[]> =>
   const invoicesFunction = httpsCallable(functions, 'invoices');
   try {
     const result = await invoicesFunction({ action: 'getReceivables' });
-    const data = result.data as { invoices: Invoice[] };
-    return data.invoices;
+    const data = result.data as Invoice[];
+    return data;
   } catch (error: any) {
     console.error("Error calling getAccountsReceivable function:", error);
     throw new Error(error.message || "No se pudieron cargar los datos porque falta un índice en la base de datos. Revisa los logs de la función en la consola de Firebase para encontrar un enlace para crearlo automáticamente.");

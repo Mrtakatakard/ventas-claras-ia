@@ -22,6 +22,7 @@ export interface ClientType {
   createdAt: Date;
   enableRestockTracking?: boolean;
   isActive: boolean;
+  organizationId?: string;
 }
 
 export interface Category {
@@ -31,6 +32,7 @@ export interface Category {
   userId: string;
   createdAt: Date;
   isActive: boolean;
+  organizationId?: string;
 }
 
 export interface Client {
@@ -54,6 +56,7 @@ export interface Client {
   userId: string;
   createdAt: Date;
   isActive: boolean;
+  organizationId?: string;
 }
 
 export interface Payment {
@@ -95,6 +98,7 @@ export interface Product {
   userId: string;
   createdAt: Date;
   isActive: boolean;
+  organizationId?: string;
 }
 
 export interface InvoiceItem {
@@ -132,6 +136,7 @@ export interface Quote {
   userId: string;
   createdAt: Date;
   isActive: boolean;
+  organizationId?: string;
 }
 
 export interface Invoice {
@@ -158,6 +163,7 @@ export interface Invoice {
   userId: string;
   createdAt: Date;
   isActive: boolean;
+  organizationId?: string;
   ncf?: string;
   ncfType?: string;
 }
@@ -173,6 +179,7 @@ export interface NCFSequence {
   expirationDate?: string;
   userId: string;
   isActive: boolean;
+  organizationId?: string;
   updatedAt: Date;
 }
 
@@ -183,6 +190,7 @@ export interface TaxSettings {
   isDefault?: boolean;
   userId: string;
   isActive: boolean;
+  organizationId?: string;
 }
 
 export type OrganizationPlan = 'free' | 'entrepreneur' | 'pyme' | 'enterprise';

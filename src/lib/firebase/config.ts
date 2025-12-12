@@ -1,8 +1,7 @@
-
 // Import the functions you need from the SDKs you need
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { validateEnv } from "../env";
-import { getAuth } from "firebase/auth";
+import { getAuth, setPersistence, browserLocalPersistence, inMemoryPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getFunctions } from "firebase/functions";
@@ -16,19 +15,6 @@ const appHostingConfig = process.env.FIREBASE_WEBAPP_CONFIG
 if (!appHostingConfig) {
   validateEnv();
 }
-
-// if (typeof window === 'undefined') {
-//   // Fix for "TypeError: localStorage.getItem is not a function"
-//   if (typeof localStorage !== 'undefined' && typeof localStorage.getItem !== 'function') {
-//     console.warn('Detected broken global localStorage on server. Removing it to prevent crashes.');
-//     try {
-//       // @ts-ignore
-//       delete global.localStorage;
-//     } catch (e) {
-//       console.error('Failed to delete broken localStorage:', e);
-//     }
-//   }
-// }
 
 // Your web app's Firebase configuration
 export const firebaseConfig = appHostingConfig || {
@@ -44,12 +30,19 @@ export const firebaseConfig = appHostingConfig || {
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Auth with persistence settings
-import { initializeAuth, browserLocalPersistence, inMemoryPersistence } from "firebase/auth";
+// Initialize Auth
+const auth = getAuth(app);
 
-const auth = initializeAuth(app, {
-  persistence: typeof window === "undefined" ? inMemoryPersistence : browserLocalPersistence,
-});
+// Prevent persistence errors during SSR
+if (typeof window !== "undefined") {
+  // Client Side: Use Local Storage
+  setPersistence(auth, browserLocalPersistence).catch((error) => {
+    console.error("Auth Persistence Error:", error);
+  });
+} else {
+  // Server Side: In Memory
+  setPersistence(auth, inMemoryPersistence).catch(() => { });
+}
 
 const db = getFirestore(app);
 const storage = getStorage(app);

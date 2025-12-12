@@ -357,7 +357,7 @@ function ProductsContent() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="hidden sm:table-cell w-[64px]">
+                  <TableHead className="w-[50px]">
                     <span className="sr-only">Imagen</span>
                   </TableHead>
                   <TableHead className="hidden md:table-cell w-[100px]">
@@ -412,7 +412,7 @@ function ProductsContent() {
                     const firstBatch = product.batches?.[0];
                     return (
                       <TableRow key={product.id}>
-                        <TableCell className="hidden sm:table-cell">
+                        <TableCell className="w-[50px]">
                           <Avatar className="h-10 w-10 rounded-md">
                             <AvatarImage src={product.imageUrl} alt={product.name} data-ai-hint="product image" />
                             <AvatarFallback className="rounded-md">{product.name.charAt(0)}</AvatarFallback>

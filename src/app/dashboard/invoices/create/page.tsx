@@ -41,7 +41,7 @@ const DEFAULT_ITBIS_RATE = 0.18;
 export default function CreateInvoicePage() {
     const router = useRouter();
     const { toast } = useToast();
-    const { userId } = useAuth();
+    const { userId, userProfile } = useAuth();
 
     const [clients, setClients] = useState<Client[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
@@ -357,6 +357,7 @@ export default function CreateInvoicePage() {
             ncfType: selectedNCFType,
             isActive: true,
             userId,
+            organizationId: userProfile?.organizationId,
             createdAt: new Date(),
         };
 
@@ -437,11 +438,10 @@ export default function CreateInvoicePage() {
 
     return (
         <>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                <PageHeader title="Crear Nueva Factura" description="Completa los detalles para generar una nueva factura." />
-                <div className="flex gap-2">
+            <div className="mb-6">
+                <PageHeader title="Crear Nueva Factura" description="Completa los detalles para generar una nueva factura.">
                     <MagicImportButton onDataScanned={handleDataScanned} disabled={isSaving} />
-                </div>
+                </PageHeader>
             </div>
 
             <div className="grid gap-8 lg:grid-cols-5">
@@ -500,7 +500,16 @@ export default function CreateInvoicePage() {
                                                                         .filter(p => getProductStock(p) > 0 || p.id === item.productId)
                                                                         .map((p) => (
                                                                             <SelectItem key={p.id} value={p.id} disabled={getProductStock(p) <= 0 && p.id !== item.productId}>
-                                                                                {p.name} ({getProductStock(p)} en stock)
+                                                                                <div className="flex items-center gap-2">
+                                                                                    {p.imageUrl && (
+                                                                                        <img
+                                                                                            src={p.imageUrl}
+                                                                                            alt={p.name}
+                                                                                            className="h-6 w-6 rounded-sm object-cover"
+                                                                                        />
+                                                                                    )}
+                                                                                    <span>{p.name} ({getProductStock(p)})</span>
+                                                                                </div>
                                                                             </SelectItem>
                                                                         ))
                                                                     }
