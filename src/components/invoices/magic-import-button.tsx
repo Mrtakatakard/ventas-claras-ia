@@ -71,7 +71,7 @@ export function MagicImportButton({ onDataScanned, disabled }: MagicImportButton
             let compressedFile: File | Blob = file;
             try {
                 const compressed = await imageCompression(file, options);
-                if (compressed instanceof Blob || compressed instanceof File) {
+                if (compressed instanceof Blob) {
                     compressedFile = compressed;
                 } else {
                     console.warn("Compression result was not a Blob/File, using original.");
