@@ -19,6 +19,8 @@ export const invoiceItemSchema = z.object({
     numberOfPeople: z.number().optional(),
     followUpStatus: z.enum(['realizado', 'pendiente']).optional(),
     isTaxExempt: z.boolean().optional(),
+    taxType: z.string().optional(),
+    goodServiceIndicator: z.enum(['1', '2']).optional(),
 });
 
 export const paymentSchema = z.object({
@@ -47,6 +49,7 @@ export const productBatchSchema = z.object({
 export const createInvoiceSchema = z.object({
     clientId: z.string().min(1, 'Client ID is required'),
     clientName: z.string().min(1, 'Client Name is required'),
+    clientRnc: z.string().optional(),
     clientEmail: z.string().email('Invalid client email'),
     clientAddress: z.string().optional(),
     issueDate: z.string(),

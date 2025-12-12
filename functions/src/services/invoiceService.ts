@@ -9,8 +9,34 @@ import { ncfService } from './ncfService';
 export const createInvoice = async (invoiceData: Omit<Invoice, 'id' | 'createdAt' | 'isActive' | 'status' | 'balanceDue' | 'payments' | 'invoiceNumber' | 'userId'>, userId: string): Promise<string> => {
     const invoiceId = db.collection('invoices').doc().id;
 
-    // Generate sequential invoice number
-    const invoiceNumber = await counterService.getNextNumber('invoices', userId, 'INV');
+    // Generate sequential invoice number with conflict resolution
+    // This handles cases where the counter service might be out of sync (e.g. after manual DB edits)
+    let invoiceNumber = '';
+    let isUnique = false;
+    let retries = 0;
+
+    while (!isUnique && retries < 10) {
+        invoiceNumber = await counterService.getNextNumber('invoices', userId, 'INV');
+
+        // Check if this number is already in use
+        const existingDocs = await db.collection('invoices')
+            .where('userId', '==', userId)
+            .where('invoiceNumber', '==', invoiceNumber)
+            .limit(1)
+            .get();
+
+        if (existingDocs.empty) {
+            isUnique = true;
+        } else {
+            // Collision detected (counter lagging). Loop will try next number.
+            console.warn(`Collision detected for invoice number ${invoiceNumber}. Retrying...`);
+            retries++;
+        }
+    }
+
+    if (!isUnique) {
+        throw new functions.https.HttpsError('internal', 'No se pudo generar un número de factura único después de múltiples intentos.');
+    }
 
     // Generate NCF if type is provided
     let ncf = '';

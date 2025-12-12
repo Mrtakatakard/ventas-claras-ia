@@ -13,10 +13,10 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Download, Printer, Loader2, CreditCard, Clipboard, Info, MessageSquare, FileCode } from "lucide-react";
 import { WhatsAppMessageDialog } from '@/components/whatsapp-message-dialog';
-import { getInvoice, getClient } from '@/lib/firebase/service';
+import { getInvoice, getClient, getUserProfile } from '@/lib/firebase/service';
 import { getWhatsAppMessage } from '@/ai/flows/whatsapp-generator-flow';
 import { generateInvoiceXML, downloadXML } from '@/lib/xml-utils';
-import type { Invoice, Payment, InvoiceItem, Client } from '@/lib/types';
+import type { Invoice, Payment, InvoiceItem, Client, UserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddPaymentForm } from '@/components/add-payment-form';
 import { useAuth } from '@/lib/firebase/hooks';
@@ -37,6 +37,7 @@ export default function InvoiceDetailPage() {
 
   // WhatsApp State
   const [client, setClient] = useState<Client | null>(null);
+  const [issuerProfile, setIssuerProfile] = useState<UserProfile | null>(null);
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
   const [messageDraft, setMessageDraft] = useState('');
   const [messageLoading, setMessageLoading] = useState(false);
@@ -53,6 +54,12 @@ export default function InvoiceDetailPage() {
     if (inv.clientId) {
       const clientData = await getClient(inv.clientId);
       setClient(clientData);
+    }
+
+    // Fetch issuer profile (for Company Name / RNC)
+    if (inv.userId) {
+      const profile = await getUserProfile(inv.userId);
+      setIssuerProfile(profile);
     }
 
     setLoading(false);
@@ -168,16 +175,85 @@ export default function InvoiceDetailPage() {
     // Header
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
-    doc.text("Ventas Claras", 14, 22);
+    doc.text(issuerProfile?.companyName || "Ventas Claras", 14, 22);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
-    doc.text("Tu Negocio, Tus Reglas.", 14, 28);
+
+    let currentHeaderY = 28;
+    if (issuerProfile?.rnc) {
+      doc.text(`RNC: ${issuerProfile.rnc}`, 14, currentHeaderY);
+      currentHeaderY += 5;
+    }
+
+    // Helper for PDF context
+    const getNcfDescription = (code?: string) => {
+      if (!code) return '';
+      const map: Record<string, string> = {
+        'B01': 'Factura de Crédito Fiscal',
+        'B02': 'Factura de Consumo',
+        'B14': 'Factura de Régimen Especial',
+        'B15': 'Factura Gubernamental',
+        'E31': 'Factura de Crédito Fiscal Electrónica',
+        'E32': 'Factura de Consumo Electrónica',
+        'E33': 'Nota de Débito Electrónica',
+        'E34': 'Nota de Crédito Electrónica',
+        'E41': 'Compras Electrónicas',
+        'E43': 'Gastos Menores Electrónicos',
+        'E44': 'Regímenes Especiales Electrónicos',
+        'E45': 'Factura Gubernamental Electrónica',
+      };
+      return map[code] || '';
+    };
 
     // Invoice Number and Status
-    doc.setFontSize(18);
-    doc.text(`Factura: ${invoice.invoiceNumber}`, 200, 22, { align: 'right' });
-    doc.setFontSize(12);
-    doc.text(`Estado: ${invoice.status}`, 200, 28, { align: 'right' });
+    const ncfDescription = getNcfDescription(invoice.ncfType);
+    let mainIdLabel = 'Factura';
+    let mainIdValue = invoice.invoiceNumber;
+
+    // Default label prefix
+    let idPrefix = '';
+
+    if (invoice.ncf) {
+      // If we have a description, use it as the top label (The Title)
+      if (ncfDescription) {
+        mainIdLabel = ncfDescription;
+      } else {
+        // Fallback if no description found
+        mainIdLabel = invoice.ncf.startsWith('E') ? 'Factura Electrónica' : 'Factura Fiscal';
+      }
+
+      // The value should be prefixed with e-NCF or NCF
+      idPrefix = invoice.ncf.startsWith('E') ? 'e-NCF: ' : 'NCF: ';
+      mainIdValue = invoice.ncf;
+    }
+
+    // Position Calculations for Right Header
+    const rightSideX = 200;
+
+    // 1. Label (The Description / Title)
+    // Adjust font size based on length to ensure it fits
+    const labelFontSize = mainIdLabel.length > 25 ? 10 : 12;
+    doc.setFontSize(labelFontSize);
+    doc.setFont("helvetica", "bold"); // Make title bold
+    doc.text(mainIdLabel.toUpperCase(), rightSideX, 20, { align: 'right' });
+
+    // 2. The Value (e.g. e-NCF: E31...)
+    doc.setFont("helvetica", "normal"); // Value normal
+    doc.setFontSize(14);
+    doc.text(`${idPrefix}${mainIdValue}`, rightSideX, 27, { align: 'right' });
+
+    // 3. Status and Ref
+    let currentStatusY = 34; // Moved down slightly
+    if (invoice.ncf) {
+      doc.setFontSize(9);
+      doc.setTextColor(100); // Gray for Ref
+      doc.text(`Ref Interna: ${invoice.invoiceNumber}`, rightSideX, currentStatusY, { align: 'right' });
+      doc.setTextColor(0); // Reset color
+      currentStatusY += 4;
+    }
+
+    doc.setFontSize(10);
+    doc.text(`Estado: ${invoice.status}`, rightSideX, currentStatusY, { align: 'right' });
 
     doc.setLineWidth(0.5);
     doc.line(14, 38, 200, 38);
@@ -191,6 +267,10 @@ export default function InvoiceDetailPage() {
     currentY += 5;
     doc.setFont("helvetica", "normal");
     doc.text(invoice.clientEmail, 14, currentY);
+    if (invoice.clientRnc) {
+      currentY += 5;
+      doc.text(`RNC: ${invoice.clientRnc}`, 14, currentY);
+    }
     if (invoice.clientAddress) {
       currentY += 5;
       doc.text(invoice.clientAddress, 14, currentY);
@@ -343,11 +423,17 @@ export default function InvoiceDetailPage() {
     doc.setFontSize(24);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.text("Ventas Claras", 14, 22);
+    doc.text(issuerProfile?.companyName || "Ventas Claras", 14, 22);
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100);
-    doc.text("Tu Negocio, Tus Reglas.", 14, 28);
+
+    let currentHeaderY = 28;
+    if (issuerProfile?.rnc) {
+      doc.text(`RNC: ${issuerProfile.rnc}`, 14, currentHeaderY);
+      currentHeaderY += 5;
+    }
+    // doc.text("Tu Negocio, Tus Reglas.", 14, 28);
 
     // Receipt Title
     doc.setFontSize(22);
@@ -439,10 +525,14 @@ export default function InvoiceDetailPage() {
 
   const handleExportXML = () => {
     if (!invoice) return;
+    if (!issuerProfile || !client) {
+      toast({ title: "Datos incompletos", description: "Faltan datos del emisor o cliente para generar el XML.", variant: "destructive" });
+      return;
+    }
     try {
-      const xml = generateInvoiceXML(invoice);
+      const xml = generateInvoiceXML(invoice, issuerProfile, client);
       downloadXML(`eCF-${invoice.ncf || invoice.invoiceNumber}.xml`, xml);
-      toast({ title: "XML Exportado", description: "El archivo electrónica se ha descargado." });
+      toast({ title: "XML Exportado", description: "El archivo electrónico se ha descargado." });
     } catch (error) {
       console.error("XML Error", error);
       toast({ title: "Error", description: "No se pudo generar el XML.", variant: "destructive" });
@@ -494,9 +584,40 @@ export default function InvoiceDetailPage() {
   const showTaxableSubtotal = invoice.includeITBIS !== false && taxableSubtotal < netSubtotal;
 
 
+  /* 
+   * Helper to get the full descriptive name of the NCF Type.
+   * e.g. E31 -> "Factura de Crédito Fiscal Electrónica"
+   */
+  const getNcfDescription = (code?: string) => {
+    if (!code) return '';
+    const map: Record<string, string> = {
+      'B01': 'Factura de Crédito Fiscal',
+      'B02': 'Factura de Consumo',
+      'B14': 'Factura de Régimen Especial',
+      'B15': 'Factura Gubernamental',
+      'E31': 'Factura de Crédito Fiscal Electrónica',
+      'E32': 'Factura de Consumo Electrónica',
+      'E33': 'Nota de Débito Electrónica',
+      'E34': 'Nota de Crédito Electrónica',
+      'E41': 'Compras Electrónicas',
+      'E43': 'Gastos Menores Electrónicos',
+      'E44': 'Regímenes Especiales Electrónicos',
+      'E45': 'Factura Gubernamental Electrónica',
+    };
+    return map[code] || 'Factura';
+  };
+
+  const getNcfLabel = (ncf?: string) => {
+    if (!ncf) return 'Factura';
+    return ncf.startsWith('E') ? 'e-NCF' : 'NCF';
+  };
+
   return (
     <>
-      <PageHeader title={`Factura ${invoice.invoiceNumber}`} description={`Emitida el ${invoice.issueDate}`}>
+      <PageHeader
+        title={invoice.ncf ? `${getNcfLabel(invoice.ncf)}: ${invoice.ncf}` : `Factura ${invoice.invoiceNumber}`}
+        description={invoice.ncfType ? getNcfDescription(invoice.ncfType) : `Emitida el ${invoice.issueDate}`}
+      >
         <div className="flex flex-wrap items-center gap-2 print:hidden mt-2 sm:mt-0">
           <Button variant="outline" onClick={() => window.print()} className="flex-1 sm:flex-none">
             <Printer className="mr-2 h-4 w-4" />
@@ -529,7 +650,7 @@ export default function InvoiceDetailPage() {
               <DialogHeader>
                 <DialogTitle>Registrar un Nuevo Pago</DialogTitle>
                 <DialogDescription>
-                  Ingresa los detalles del pago para la factura {invoice.invoiceNumber}.
+                  Ingresa los detalles del pago para la factura {invoice.ncf || invoice.invoiceNumber}.
                 </DialogDescription>
               </DialogHeader>
               <AddPaymentForm
@@ -562,11 +683,29 @@ export default function InvoiceDetailPage() {
             <div className="grid gap-6 sm:gap-10">
               <div className="flex flex-col sm:flex-row justify-between gap-4">
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-bold">Ventas Claras</h2>
-                  <p className="text-muted-foreground text-sm sm:text-base">Tu Negocio, Tus Reglas.</p>
+                  <h2 className="text-xl sm:text-2xl font-bold">{issuerProfile?.companyName || "Ventas Claras"}</h2>
+                  {issuerProfile?.rnc && <p className="text-muted-foreground font-mono">RNC: {issuerProfile?.rnc}</p>}
                 </div>
                 <div className="text-left sm:text-right">
-                  <h1 className="text-2xl sm:text-3xl font-extrabold text-primary">{invoice.invoiceNumber}</h1>
+                  {invoice.ncf ? (
+                    <>
+                      <h1 className="text-2xl sm:text-3xl font-extrabold text-primary">
+                        <span className="text-lg sm:text-xl font-normal text-muted-foreground mr-2">
+                          {invoice.ncf.startsWith('E') ? 'e-NCF:' : 'NCF:'}
+                        </span>
+                        {invoice.ncf}
+                      </h1>
+                      <p className="text-sm font-bold text-foreground mt-1 uppercase">
+                        {getNcfDescription(invoice.ncfType) || (invoice.ncf.startsWith('E') ? 'Factura Electrónica' : 'Factura Fiscal')}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Ref Interna: {invoice.invoiceNumber}</p>
+                    </>
+                  ) : (
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-primary">
+                      <span className="text-lg sm:text-xl font-normal text-muted-foreground mr-2">Factura:</span>
+                      {invoice.invoiceNumber}
+                    </h1>
+                  )}
                   <Badge variant={getStatusVariant(invoice.status)} className="text-sm mt-1">{capitalizeFirstLetter(invoice.status)}</Badge>
                 </div>
               </div>
@@ -577,6 +716,7 @@ export default function InvoiceDetailPage() {
                 <div>
                   <h3 className="font-semibold mb-2">Facturar a:</h3>
                   <p className="font-bold">{invoice.clientName}</p>
+                  {invoice.clientRnc && <p className="text-muted-foreground font-mono">RNC: {invoice.clientRnc}</p>}
                   <p className="text-muted-foreground">{invoice.clientEmail}</p>
                   {invoice.clientAddress && <p className="text-muted-foreground">{invoice.clientAddress}</p>}
                 </div>

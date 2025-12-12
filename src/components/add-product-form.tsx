@@ -34,12 +34,15 @@ const formSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres."),
   category: z.string({ required_error: "Por favor selecciona una categoría." }).min(1, "Por favor selecciona una categoría."),
   currency: z.enum(['DOP', 'USD'], { required_error: "Por favor selecciona una moneda." }),
+  productType: z.enum(['good', 'service']).default('good'),
+  taxType: z.string().default('1'), // '1' = 18%, '3' = Exempt
   description: z.string().optional(),
   notificationThreshold: z.coerce.number().int().nonnegative("El umbral debe ser un número entero no negativo.").optional(),
   restockTimeDays: z.coerce.number().int().nonnegative("El tiempo de reposición debe ser un número entero no negativo.").optional().nullable(),
   isTaxExempt: z.boolean().default(false).optional(),
   image: z.any().optional(),
-  batches: z.array(batchSchema).min(1, "Debes agregar al menos un lote de producto."),
+  batches: z.array(batchSchema).optional(), // Optional now because services don't need it
+  // But we still validate it manually if it's a good
 });
 
 interface AddProductFormProps {
@@ -62,6 +65,8 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
       name: product?.name || "",
       category: product?.category || "",
       currency: product?.currency || 'DOP',
+      productType: product?.productType || 'good',
+      taxType: product?.taxType || '1',
       description: product?.description || "",
       notificationThreshold: product?.notificationThreshold ?? 10,
       restockTimeDays: product?.restockTimeDays,
@@ -76,15 +81,28 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
     name: "batches"
   });
 
+  const productType = form.watch('productType');
+  const isService = productType === 'service';
+
+  // Watch taxType change to toggle isTaxExempt
   React.useEffect(() => {
-    if (!isEditing && fields.length === 0) {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'taxType') {
+        if (value.taxType === '3') { // 3 is usually Exempt
+          form.setValue('isTaxExempt', true);
+        } else {
+          form.setValue('isTaxExempt', false);
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form.watch, form.setValue]);
+
+  React.useEffect(() => {
+    if (!isEditing && fields.length === 0 && !isService) {
       append({ cost: '' as any, price: '' as any, stock: '' as any, expirationDate: '' });
     }
-  }, [isEditing, fields.length, append]);
-
-
-
-
+  }, [isEditing, fields.length, append, isService]);
 
   const [imagePreview, setImagePreview] = useState<string | null>(product?.imageUrl || null);
 
@@ -94,13 +112,18 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
       return;
     }
 
+    if (!isService && (!values.batches || values.batches.length === 0)) {
+      form.setError("batches", { message: "Debes agregar al menos un lote para productos físicos." });
+      return;
+    }
+
     const codeExists = await productApi.checkCode(values.code, product?.id);
     if (codeExists) {
       form.setError("code", { type: "manual", message: "Este código de producto ya está en uso." });
       return;
     }
 
-    const batchesWithIds = values.batches.map(batch => ({
+    const batchesWithIds = (values.batches || []).map(batch => ({
       ...batch,
       id: batch.id || `batch-${Date.now()}-${Math.random()}`
     }));
@@ -127,13 +150,13 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
     const productData = {
       ...valuesWithoutImage,
       description: values.description || '',
-      batches: batchesWithIds,
+      batches: isService ? [] : batchesWithIds, // No batches for services
       imageUrl: imageUrl,
       restockTimeDays: values.restockTimeDays === undefined ? null : values.restockTimeDays,
       userId: userId,
-      price: batchesWithIds[0]?.price || 0,
-      cost: batchesWithIds[0]?.cost,
-      stock: batchesWithIds.reduce((sum: number, batch: any) => sum + batch.stock, 0),
+      price: isService ? 0 : (batchesWithIds[0]?.price || 0), // Services don't manage price here for now, or maybe they should have a base price? Assuming 0/variable
+      cost: isService ? 0 : batchesWithIds[0]?.cost,
+      stock: isService ? 0 : batchesWithIds.reduce((sum: number, batch: any) => sum + batch.stock, 0),
     };
 
     try {
@@ -170,19 +193,52 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
     }
   };
 
-  const totalStock = form.watch('batches').reduce((sum, batch) => sum + (batch.stock || 0), 0);
-  const totalQuantity = form.watch('batches').reduce((sum: number, batch: any) => sum + (Number(batch.quantity) || 0), 0) || 0;
-
+  const totalStock = (form.watch('batches') || []).reduce((sum, batch) => sum + (Number(batch.stock) || 0), 0);
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField control={form.control} name="code" render={({ field }) => (
-          <FormItem><FormLabel>Código del Producto</FormLabel><FormControl><Input placeholder="P001" {...field} /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField control={form.control} name="name" render={({ field }) => (
-          <FormItem><FormLabel>Nombre del Producto</FormLabel><FormControl><Input placeholder="Producto Estrella A" {...field} /></FormControl><FormMessage /></FormItem>
-        )} />
+
+        <div className="flex gap-4 p-4 border rounded-lg bg-muted/20">
+          <FormField control={form.control} name="productType" render={({ field }) => (
+            <FormItem className="flex-1">
+              <FormLabel>Tipo de Ítem</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                <SelectContent>
+                  <SelectItem value="good">Producto (Bien Físico)</SelectItem>
+                  <SelectItem value="service">Servicio</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormDescription>Los servicios no manejan inventario.</FormDescription>
+            </FormItem>
+          )} />
+
+          <FormField control={form.control} name="taxType" render={({ field }) => (
+            <FormItem className="flex-1">
+              <FormLabel>Impuesto Predeterminado</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                <SelectContent>
+                  <SelectItem value="1">ITBIS 18%</SelectItem>
+                  <SelectItem value="2">ITBIS 16%</SelectItem>
+                  <SelectItem value="3">Exento (0%)</SelectItem>
+                  <SelectItem value="4">ITBIS 0%</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormItem>
+          )} />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField control={form.control} name="code" render={({ field }) => (
+            <FormItem><FormLabel>Código</FormLabel><FormControl><Input placeholder="CÓDIGO-01" {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="name" render={({ field }) => (
+            <FormItem><FormLabel>Nombre</FormLabel><FormControl><Input placeholder="Nombre del ítem" {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField control={form.control} name="category" render={({ field }) => (
             <FormItem>
@@ -211,42 +267,44 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
           )} />
         </div>
 
-        <div className="space-y-4 rounded-lg border p-4">
-          <div className="flex justify-between items-center">
-            <div className="space-y-1">
-              <FormLabel>Lotes de Inventario</FormLabel>
-              <FormDescription>Gestiona el stock, costo y precio por cada lote.</FormDescription>
+        {!isService && (
+          <div className="space-y-4 rounded-lg border p-4">
+            <div className="flex justify-between items-center">
+              <div className="space-y-1">
+                <FormLabel>Lotes de Inventario</FormLabel>
+                <FormDescription>Gestiona el stock, costo y precio por cada lote.</FormDescription>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium">Stock Total: <span className="font-bold">{totalStock}</span></span>
+                <Button type="button" size="sm" variant="outline" onClick={() => append({ cost: '' as any, price: '' as any, stock: '' as any, expirationDate: '' })}><PlusCircle className="mr-2 h-4 w-4" />Agregar Lote</Button>
+              </div>
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium">Stock Total: <span className="font-bold">{totalStock}</span></span>
-              <Button type="button" size="sm" variant="outline" onClick={() => append({ cost: '' as any, price: '' as any, stock: '' as any, expirationDate: '' })}><PlusCircle className="mr-2 h-4 w-4" />Agregar Lote</Button>
-            </div>
+            {fields.map((batchField: any, index: number) => (
+              <div key={batchField.id} className="grid gap-4 p-4 border rounded-lg relative">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <FormField control={form.control} name={`batches.${index}.cost`} render={({ field }) => (
+                    <FormItem><FormLabel>Costo</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 && !isEditing ? '' : field.value} onChange={e => field.onChange(e.target.value === '' ? '' : +e.target.value)} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name={`batches.${index}.price`} render={({ field }) => (
+                    <FormItem><FormLabel>Precio Venta</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 && !isEditing ? '' : field.value} onChange={e => field.onChange(e.target.value === '' ? '' : +e.target.value)} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name={`batches.${index}.stock`} render={({ field }) => (
+                    <FormItem><FormLabel>Stock</FormLabel><FormControl><Input type="number" {...field} value={field.value === 0 && !isEditing ? '' : field.value} onChange={e => field.onChange(e.target.value === '' ? '' : +e.target.value)} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name={`batches.${index}.expirationDate`} render={({ field }) => (
+                    <FormItem><FormLabel>Expiración</FormLabel><FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                </div>
+                <div className="absolute top-2 right-2">
+                  <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => remove(index)} disabled={fields.length <= 1}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <FormMessage>{form.formState.errors.batches?.message}</FormMessage>
           </div>
-          {fields.map((batchField: any, index: number) => (
-            <div key={batchField.id} className="grid gap-4 p-4 border rounded-lg relative">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <FormField control={form.control} name={`batches.${index}.cost`} render={({ field }) => (
-                  <FormItem><FormLabel>Costo</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 && !isEditing ? '' : field.value} onChange={e => field.onChange(e.target.value === '' ? '' : +e.target.value)} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name={`batches.${index}.price`} render={({ field }) => (
-                  <FormItem><FormLabel>Precio Venta</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 && !isEditing ? '' : field.value} onChange={e => field.onChange(e.target.value === '' ? '' : +e.target.value)} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name={`batches.${index}.stock`} render={({ field }) => (
-                  <FormItem><FormLabel>Stock</FormLabel><FormControl><Input type="number" {...field} value={field.value === 0 && !isEditing ? '' : field.value} onChange={e => field.onChange(e.target.value === '' ? '' : +e.target.value)} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name={`batches.${index}.expirationDate`} render={({ field }) => (
-                  <FormItem><FormLabel>Expiración</FormLabel><FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                )} />
-              </div>
-              <div className="absolute top-2 right-2">
-                <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => remove(index)} disabled={fields.length <= 1}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
-          <FormMessage>{form.formState.errors.batches?.message}</FormMessage>
-        </div>
+        )}
 
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

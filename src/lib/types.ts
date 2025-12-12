@@ -41,6 +41,7 @@ export interface Client {
   phone: string;
   birthday: string;
   email: string;
+  rnc?: string; // Tax ID
   addresses: Address[];
   clientTypeId: string;
   clientTypeName: string;
@@ -86,6 +87,8 @@ export interface Product {
   description: string;
   currency: 'DOP' | 'USD';
   category: string;
+  productType?: 'good' | 'service'; // Default 'good'
+  taxType?: string; // Default tax code (e.g., '1' for 18%)
   batches: ProductBatch[];
   // Computed properties from first batch for backward compatibility
   price?: number;
@@ -112,6 +115,8 @@ export interface InvoiceItem {
   numberOfPeople?: number;
   followUpStatus?: 'realizado' | 'pendiente';
   isTaxExempt?: boolean;
+  taxType?: string; // '1'=18%, '2'=16%, '3'=0% (Exempt), etc.
+  goodServiceIndicator?: '1' | '2'; // '1'=Bienes, '2'=Servicios
 }
 
 export interface Quote {
@@ -144,6 +149,7 @@ export interface Invoice {
   invoiceNumber: string;
   clientId: string;
   clientName: string;
+  clientRnc?: string;
   clientEmail: string;
   clientAddress?: string;
   issueDate: string;
@@ -248,5 +254,7 @@ export interface UserProfile {
   invitedBy?: string; // UID of the admin who invited this user
   createdAt: Date;
   isActive: boolean;
+  rnc?: string;
+  companyName?: string;
 }
 

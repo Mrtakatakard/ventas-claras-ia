@@ -29,6 +29,7 @@ const formSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres."),
   email: z.string().email("Si se ingresa un correo, debe ser válido.").or(z.string().length(0)).optional(),
   phone: z.string().min(10, "El teléfono debe tener al menos 10 caracteres."),
+  rnc: z.string().optional(),
   birthday: z.string().optional(),
   clientTypeId: z.string({
     required_error: "Por favor selecciona un tipo de cliente.",
@@ -56,6 +57,7 @@ export function AddClientForm({ onSuccess, client, clientTypes }: AddClientFormP
       name: client?.name || "",
       email: client?.email || "",
       phone: client?.phone || "",
+      rnc: client?.rnc || "",
       birthday: client?.birthday || "",
       clientTypeId: client?.clientTypeId || "",
       addresses: client?.addresses?.map(a => ({ id: a.id, alias: a.alias, fullAddress: a.fullAddress })) || [],
@@ -100,6 +102,7 @@ export function AddClientForm({ onSuccess, client, clientTypes }: AddClientFormP
           name: values.name,
           email: values.email || '',
           phone: values.phone,
+          rnc: values.rnc || undefined,
           birthday: values.birthday || '',
           clientTypeId: values.clientTypeId,
           clientTypeName: selectedClientType.name,
@@ -115,6 +118,7 @@ export function AddClientForm({ onSuccess, client, clientTypes }: AddClientFormP
           name: values.name,
           email: values.email || '',
           phone: values.phone,
+          rnc: values.rnc || undefined,
           birthday: values.birthday || '',
           clientTypeId: values.clientTypeId,
           clientTypeName: selectedClientType.name,
@@ -162,6 +166,9 @@ export function AddClientForm({ onSuccess, client, clientTypes }: AddClientFormP
           )} />
           <FormField control={form.control} name="phone" render={({ field }) => (
             <FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input placeholder="809-123-4567" {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="rnc" render={({ field }) => (
+            <FormItem><FormLabel>RNC / Cédula (Opcional)</FormLabel><FormControl><Input placeholder="001-0000000-0" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
           )} />
           <FormField control={form.control} name="birthday" render={({ field }) => (
             <FormItem><FormLabel>Cumpleaños (Opcional)</FormLabel><FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>

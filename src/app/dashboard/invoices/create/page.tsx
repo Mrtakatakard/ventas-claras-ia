@@ -33,6 +33,8 @@ type InvoiceItemState = {
     quantity: number;
     discount: number;
     numberOfPeople?: number;
+    taxType?: string;
+    goodServiceIndicator?: '1' | '2';
 };
 
 // Default 18%, but users can switch
@@ -134,6 +136,7 @@ export default function CreateInvoicePage() {
         let grossSubtotal = 0;
         let currentDiscountTotal = 0;
         let currentTaxableSubtotal = 0;
+        let currentItbis = 0;
 
         items.forEach(item => {
             const product = products.find((p) => p.id === item.productId);
@@ -147,13 +150,31 @@ export default function CreateInvoicePage() {
             grossSubtotal += itemTotal;
             currentDiscountTotal += itemDiscountAmount;
 
-            if (!product.isTaxExempt) {
+            // Check item.taxType (default to product default if missing, or '1' if both missing)
+            const taxType = item.taxType || product.taxType || '1';
+
+            // Determine rate
+            let rate = 0;
+            if (taxType === '1') rate = 0.18;
+            else if (taxType === '2') rate = 0.16;
+            // '3' (Exempt) and '4' (0%) stay 0
+
+            const isExempt = taxType === '3' || product.isTaxExempt;
+
+            if (!isExempt) {
                 currentTaxableSubtotal += itemNetTotal;
+            }
+
+            if (includeITBIS) {
+                // If exempt or 0%, rate is 0, so no add.
+                // We add the tax for this specific item
+                // Note: This replaces the global `itbisRate` multiplication
+                currentItbis += itemNetTotal * rate;
             }
         });
 
         const currentNetSubtotal = grossSubtotal - currentDiscountTotal;
-        const currentItbis = includeITBIS ? currentTaxableSubtotal * itbisRate : 0;
+        // currentItbis is already calculated in the loop
         const currentTotal = currentNetSubtotal + currentItbis;
 
         return {
@@ -167,15 +188,28 @@ export default function CreateInvoicePage() {
     }, [items, products, includeITBIS, itbisRate, useCostPrice]);
 
 
-    const handleAddItem = () => setItems([...items, { id: Date.now(), productId: '', quantity: 1, discount: 0, numberOfPeople: 1 }]);
+    const handleAddItem = () => setItems([...items, { id: Date.now(), productId: '', quantity: 1, discount: 0, numberOfPeople: 1, taxType: '1', goodServiceIndicator: '1' }]);
     const handleRemoveItem = (id: number) => setItems(items.filter((item) => item.id !== id));
 
-    const handleItemChange = (id: number, field: 'productId' | 'quantity' | 'discount' | 'numberOfPeople', value: string) => {
+    const handleItemChange = (id: number, field: 'productId' | 'quantity' | 'discount' | 'numberOfPeople' | 'taxType' | 'goodServiceIndicator', value: string) => {
         setItems(items.map(item => {
             if (item.id !== id) return item;
 
             if (field === 'productId') {
-                return { ...item, productId: value, quantity: 1, numberOfPeople: 1 };
+                const product = products.find(p => p.id === value);
+                return {
+                    ...item,
+                    productId: value,
+                    quantity: 1,
+                    numberOfPeople: 1,
+                    // Initialize with product defaults
+                    taxType: product?.taxType || '1',
+                    goodServiceIndicator: (product?.productType === 'service' ? '2' : '1') as '1' | '2',
+                };
+            }
+
+            if (field === 'taxType' || field === 'goodServiceIndicator') {
+                return { ...item, [field]: value };
             }
 
             if (field === 'discount') {
@@ -252,7 +286,7 @@ export default function CreateInvoicePage() {
                     existing.numberOfPeople += item.numberOfPeople;
                 }
             } else {
-                consolidatedItemsMap.set(key, { ...item });
+                consolidatedItemsMap.set(key, { ...item }); // Warning: Consolidated items might lose taxType difference if we only group by Product+Discount. For now, we assume simple grouping.
             }
         }
         const finalItemsState = Array.from(consolidatedItemsMap.values());
@@ -294,7 +328,9 @@ export default function CreateInvoicePage() {
                 unitPrice: unitPrice,
                 discount: item.discount || 0,
                 finalPrice: unitPrice - discountAmount,
-                isTaxExempt: product.isTaxExempt,
+                isTaxExempt: item.taxType === '3', // If they chose Exempt
+                taxType: item.taxType || product.taxType || '1',
+                goodServiceIndicator: item.goodServiceIndicator || (product.productType === 'service' ? '2' : '1'),
             };
 
             if (isRestockTrackingEnabled) {
@@ -313,6 +349,7 @@ export default function CreateInvoicePage() {
         let grossSubtotal = 0;
         let currentDiscountTotal = 0;
         let currentTaxableSubtotal = 0;
+        let newItbis = 0;
 
         invoiceItems.forEach(item => {
             const product = products.find((p) => p.id === item.productId);
@@ -326,19 +363,31 @@ export default function CreateInvoicePage() {
             grossSubtotal += itemTotal;
             currentDiscountTotal += itemDiscountAmount;
 
-            if (!product.isTaxExempt) {
+            if (!product.isTaxExempt && item.taxType !== '3') {
                 currentTaxableSubtotal += itemNetTotal;
+            }
+
+            // Calculate Item Tax
+            const taxType = item.taxType || product.taxType || '1';
+            let rate = 0;
+            if (taxType === '1') rate = 0.18;
+            else if (taxType === '2') rate = 0.16;
+            // If taxType is '3' (Exempt) or '4' (0%), rate remains 0.
+
+            if (includeITBIS) {
+                newItbis += itemNetTotal * rate;
             }
         });
 
         const newNetSubtotal = grossSubtotal - currentDiscountTotal;
-        const newItbis = includeITBIS ? currentTaxableSubtotal * itbisRate : 0;
+        // newItbis calculated in loop
         const newTotal = newNetSubtotal + newItbis;
 
         const newInvoice: Omit<Invoice, 'id'> = {
-            invoiceNumber: `FAC-${Date.now().toString().slice(-6)}`,
+            invoiceNumber: `FAC-${Date.now()}`,
             clientId: selectedClient.id,
             clientName: selectedClient.name,
+            clientRnc: selectedClient.rnc,
             clientEmail: selectedClient.email,
             clientAddress: selectedClient?.addresses?.find(a => a.id === selectedAddressId)?.fullAddress ?? '',
             issueDate,
@@ -444,7 +493,7 @@ export default function CreateInvoicePage() {
                 </PageHeader>
             </div>
 
-            <div className="grid gap-8 lg:grid-cols-5">
+            <div className="grid gap-8 lg:grid-cols-4">
                 <div className="lg:col-span-3 space-y-8">
                     <Card>
                         <CardHeader>
@@ -474,11 +523,12 @@ export default function CreateInvoicePage() {
                                         <TableHeader>
                                             <TableRow>
                                                 <TableHead>Producto</TableHead>
-                                                <TableHead className="w-[120px]">Cantidad</TableHead>
-                                                {isRestockTrackingEnabled && <TableHead className="w-[120px]">Personas</TableHead>}
-                                                <TableHead className="w-[120px]">Desc. (%)</TableHead>
-                                                <TableHead className="w-[150px] text-right">Precio Unit.</TableHead>
-                                                <TableHead className="w-[150px] text-right">Total</TableHead>
+                                                <TableHead className="w-[100px]">Cant.</TableHead>
+                                                {isRestockTrackingEnabled && <TableHead className="w-[100px]">Personas</TableHead>}
+                                                <TableHead className="w-[140px] text-right">Precio</TableHead>
+                                                <TableHead className="w-[100px] text-right">Desc. (%)</TableHead>
+                                                <TableHead className="w-[120px]">Impuesto</TableHead>
+                                                <TableHead className="w-[140px] text-right">Total</TableHead>
                                                 <TableHead className="w-[50px]"></TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -527,8 +577,17 @@ export default function CreateInvoicePage() {
                                                                 />
                                                             </TableCell>
                                                         )}
-                                                        <TableCell><Input type="number" min="0" max="100" value={item.discount} onChange={(e) => handleItemChange(item.id, 'discount', e.target.value)} /></TableCell>
                                                         <TableCell className="text-right">{product ? formatCurrency(unitPrice, invoiceCurrency) : "-"}</TableCell>
+                                                        <TableCell><Input type="number" min="0" max="100" value={item.discount} onChange={(e) => handleItemChange(item.id, 'discount', e.target.value)} className="text-right" /></TableCell>
+                                                        <TableCell>
+                                                            <Select value={item.taxType || '1'} onValueChange={(value) => handleItemChange(item.id, 'taxType', value)}>
+                                                                <SelectTrigger className="h-8 w-[100px]"><SelectValue /></SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="1">18%</SelectItem>
+                                                                    <SelectItem value="3">Exento</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </TableCell>
                                                         <TableCell className="text-right font-medium">{formatCurrency(finalTotal, invoiceCurrency)}</TableCell>
                                                         <TableCell><Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)} disabled={items.length <= 1}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                                                     </TableRow>
@@ -544,7 +603,7 @@ export default function CreateInvoicePage() {
                     </Card>
                 </div>
 
-                <div className="lg:col-span-2 space-y-4">
+                <div className="lg:col-span-1 space-y-4">
                     <Accordion type="multiple" defaultValue={['options', 'details']} className="w-full space-y-4">
                         <Card>
                             <AccordionItem value="options" className="border-b-0">
