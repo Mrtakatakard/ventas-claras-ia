@@ -185,13 +185,58 @@ export interface TaxSettings {
   isActive: boolean;
 }
 
+export type OrganizationPlan = 'free' | 'entrepreneur' | 'pyme' | 'enterprise';
+
+export interface Organization {
+  id: string;
+  name: string;
+  ownerId: string;
+  plan: OrganizationPlan;
+  subscriptionStatus: 'active' | 'past_due' | 'canceled' | 'trial';
+
+  // 1. LIMITS (The Cap)
+  // These are calculated dynamically: PlanBase + PurchasedExtras
+  limits: {
+    invoicesPerMonth: number;
+    aiCreditsPerMonth: number;
+    usersLimit: number;
+    hasDigitalMenu: boolean;
+    hasWhatsAppBot: boolean;
+  };
+
+  // 2. ADD-ONS (The "Bucket" of things you bought)
+  addOns: {
+    extraInvoices: number;   // Bought packs
+    extraAICredits: number;  // Bought packs
+  };
+
+  // 3. USAGE (The Meter)
+  usage: {
+    periodStart: string; // ISO String: "2024-03-01". Resets when month changes.
+    invoicesCreatedThisPeriod: number;
+    aiCreditsUsedThisPeriod: number;
+  };
+
+  // 4. BILLING
+  billingProvider?: 'lemonsqueezy' | 'manual' | 'stripe';
+  billingCustomerId?: string;
+
+  createdAt: Date;
+  isActive: boolean;
+}
+
 export interface UserProfile {
   id: string; // UID from Auth
   email: string;
   name: string;
-  role: 'superAdmin' | 'admin' | 'user';
+  role: 'superAdmin' | 'admin' | 'user'; // System role
+
+  // Organization Context
+  organizationId?: string; // Link to the Org
+  organizationRole?: 'owner' | 'admin' | 'member'; // Role within the Org
+
   status: 'active' | 'pending';
-  planId?: 'pro' | 'basic' | 'legacy'; // 'legacy' for old users, undefined for new ones until they pick
+  planId?: string; // Deprecated by Organization.plan, kept for legacy compatibility
   invitedBy?: string; // UID of the admin who invited this user
   createdAt: Date;
   isActive: boolean;

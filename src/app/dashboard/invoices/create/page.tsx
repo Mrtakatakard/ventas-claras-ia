@@ -25,6 +25,7 @@ import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { logAnalyticsEvent } from '@/lib/firebase/analytics';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { MagicImportButton } from '@/components/invoices/magic-import-button';
 
 type InvoiceItemState = {
     id: number;
@@ -374,6 +375,47 @@ export default function CreateInvoicePage() {
         }
     };
 
+    const handleDataScanned = (data: any) => {
+        if (data.items) {
+            // Map AI items to our InvoiceItemState
+            // We try to match by name or create generic items
+            // For MVP: We just try to map to existing products or generic?
+            // The prompt returns "description".
+            // We need to map "description" -> "productId".
+            // COMPLEXITY: AI gives "Coca Cola". We have "Coca Cola 2L" (ID: 123).
+            // Ideal: AI returns generic text, we show "Review" modal?
+            // Simple MVP: We add them as items, but valid Product ID is required for saving.
+            // HACK: We need a "Generic Product" or "Custom Item" support?
+            // Check if app supports "Custom Items" (no ID).
+            // Looking at `handleSaveInvoice`: `if (!item.productId) continue;`
+            // So we MUST match a product ID.
+            // Auto-match Logic:
+            const newItems: InvoiceItemState[] = data.items.map((aiItem: any, index: number) => {
+                // Fuzzy search in availableProducts
+                const match = availableProducts.find(p =>
+                    p.name.toLowerCase().includes(aiItem.description.toLowerCase()) ||
+                    aiItem.description.toLowerCase().includes(p.name.toLowerCase())
+                );
+
+                return {
+                    id: Date.now() + index,
+                    productId: match ? match.id : '', // Empty if no match, user must select
+                    quantity: aiItem.quantity || 1,
+                    discount: 0,
+                    numberOfPeople: 1
+                }
+            });
+
+            if (newItems.length > 0) {
+                setItems(newItems);
+                toast({
+                    title: "Items Importados",
+                    description: `Se detectaron ${newItems.length} productos. Por favor verifica las coincidencias.`,
+                });
+            }
+        }
+    };
+
     if (loading) {
         return (
             <>
@@ -395,7 +437,12 @@ export default function CreateInvoicePage() {
 
     return (
         <>
-            <PageHeader title="Crear Nueva Factura" description="Completa los detalles para generar una nueva factura." />
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <PageHeader title="Crear Nueva Factura" description="Completa los detalles para generar una nueva factura." />
+                <div className="flex gap-2">
+                    <MagicImportButton onDataScanned={handleDataScanned} disabled={isSaving} />
+                </div>
+            </div>
 
             <div className="grid gap-8 lg:grid-cols-5">
                 <div className="lg:col-span-3 space-y-8">
