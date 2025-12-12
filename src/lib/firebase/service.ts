@@ -275,9 +275,9 @@ export const getInvoices = (userId: string) => getDocuments<Invoice>("invoices",
 export const getInvoice = (id: string) => getDocument<Invoice>("invoices", id);
 
 export const getAccountsReceivableFromFunction = async (): Promise<Invoice[]> => {
-  const getReceivables = httpsCallable(functions, 'getAccountsReceivable');
+  const invoicesFunction = httpsCallable(functions, 'invoices');
   try {
-    const result = await getReceivables();
+    const result = await invoicesFunction({ action: 'getReceivables' });
     const data = result.data as { invoices: Invoice[] };
     return data.invoices;
   } catch (error: any) {
