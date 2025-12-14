@@ -517,7 +517,7 @@ export function ImportProductsDialog({
                           </TableCell>
                         )}
                         {batchIndex === 0 && <TableCell rowSpan={product.batches.length} className="align-top pt-2 font-mono"><Input value={product.code} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(product.rowIndex, 'code', e.target.value)} className={cn('min-w-[100px]', product.errorMessage?.includes('código') && 'border-destructive')} /></TableCell>}
-                        {batchIndex === 0 && <TableCell rowSpan={product.batches.length} className="align-top pt-2"><Input value={product.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(product.rowIndex, 'name', e.target.value)} className={cn('min-w-[150px]', product.errorMessage?.includes('nombre') && 'border-destructive')} /></TableCell>}
+                        {batchIndex === 0 && <TableCell rowSpan={product.batches.length} className="align-top pt-2"><Input value={product.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(product.rowIndex, 'name', e.target.value)} className={cn('min-w-[350px]', product.errorMessage?.includes('nombre') && 'border-destructive')} /></TableCell>}
 
                         <TableCell className="font-mono text-xs pt-2">Lote #{batchIndex + 1}</TableCell>
 
@@ -561,7 +561,7 @@ export function ImportProductsDialog({
                             type="number"
                             value={batch.stock}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleBatchFieldChange(product.rowIndex, batchIndex, 'stock', Number(e.target.value))}
-                            className="min-w-[80px]"
+                            className="w-24 text-center"
                           />
                         </TableCell>
 
