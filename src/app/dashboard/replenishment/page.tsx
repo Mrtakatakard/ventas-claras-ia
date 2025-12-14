@@ -156,7 +156,7 @@ export default function ReplenishmentPage() {
                 title="Lista de Compras Inteligente"
                 description="Productos que necesitan reabastecimiento basado en ventas y stock mínimo."
             >
-                <Button onClick={handleDownloadPDF} variant="outline" className="gap-2">
+                <Button onClick={handleDownloadPDF} variant="outline" className="gap-2" disabled={items.length === 0}>
                     <ShoppingCart className="h-4 w-4" />
                     Descargar PDF
                 </Button>

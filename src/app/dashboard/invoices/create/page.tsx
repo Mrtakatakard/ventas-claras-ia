@@ -546,7 +546,7 @@ export default function CreateInvoicePage() {
         <>
             <div className="mb-6">
                 <PageHeader title="Crear Nueva Factura" description="Completa los detalles para generar una nueva factura.">
-                    <MagicImportButton onDataScanned={handleDataScanned} disabled={isSaving} />
+                    {/* <MagicImportButton onDataScanned={handleDataScanned} disabled={isSaving} /> */}
                 </PageHeader>
             </div>
 

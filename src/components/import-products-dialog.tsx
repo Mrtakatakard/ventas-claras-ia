@@ -11,7 +11,8 @@ import { useToast } from '@/hooks/use-toast'
 import type { Product, Category, ProductBatch } from '@/lib/types'
 import { useAuth } from '@/lib/firebase/hooks'
 import { productApi } from '@/lib/api/productApi'
-import { Loader2, AlertCircle, CheckCircle } from 'lucide-react'
+import { addCategory } from '@/lib/firebase/service'
+import { PlusCircle, Loader2, AlertCircle, CheckCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Checkbox } from './ui/checkbox'
@@ -66,6 +67,44 @@ export function ImportProductsDialog({
   const [selectedRows, setSelectedRows] = useState(new Set<number>());
   const [bulkCategoryId, setBulkCategoryId] = useState<string>('');
   const [bulkMargin, setBulkMargin] = useState<string>('');
+
+  const [localCategories, setLocalCategories] = useState<Category[]>(existingCategories);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
+  useEffect(() => {
+    setLocalCategories(existingCategories);
+  }, [existingCategories]);
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim() || !userId) return;
+
+    try {
+      const newCatData = {
+        name: newCategoryName.trim(),
+        description: 'Creada desde importación',
+        // addCategory handles the rest
+      };
+      const result = await addCategory(newCatData, userId);
+
+      const newCategory: Category = {
+        id: result.id,
+        name: newCatData.name,
+        description: newCatData.description,
+        userId,
+        isActive: true,
+        createdAt: new Date(), // approximate
+      };
+
+      setLocalCategories(prev => [...prev, newCategory]);
+      setBulkCategoryId(result.id); // Auto-select it
+      setNewCategoryName('');
+      setIsCreatingCategory(false);
+      toast({ title: "Categoría Creada", description: `"${newCatData.name}" lista para usar.` });
+    } catch (error) {
+      toast({ title: "Error", description: "No se pudo crear la categoría.", variant: "destructive" });
+    }
+  };
 
   const validateProducts = (productsToValidate: ValidatedProduct[]) => {
     const existingCodes = new Set(existingProducts.map(p => p.code.toUpperCase()));
@@ -307,6 +346,24 @@ export function ImportProductsDialog({
   };
 
 
+  const [bulkCurrency, setBulkCurrency] = useState<'DOP' | 'USD' | ''>('');
+
+  const handleApplyBulkCurrency = () => {
+    if (!bulkCurrency) return;
+
+    setValidatedProducts(prev => prev.map((p: ValidatedProduct) =>
+      selectedRows.has(p.rowIndex) ? { ...p, currency: bulkCurrency } : p
+    ));
+
+    toast({
+      title: "Moneda Actualizada",
+      description: `Se asignó la moneda ${bulkCurrency} a ${selectedRows.size} producto(s).`
+    })
+
+    setSelectedRows(new Set());
+    setBulkCurrency('');
+  };
+
   const hasErrors = useMemo(() => validatedProducts.some((p: ValidatedProduct) => p.status === 'error'), [validatedProducts]);
   const hasMissingCurrency = useMemo(() => validatedProducts.some((p: ValidatedProduct) => !p.currency), [validatedProducts]);
   const hasMissingPrice = useMemo(() => validatedProducts.some((p: ValidatedProduct) => p.batches.some((b: ImportedBatch) => b.price <= 0)), [validatedProducts]);
@@ -317,7 +374,7 @@ export function ImportProductsDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl">
+      <DialogContent className="max-w-[95vw] w-full max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Revisar Productos a Importar</DialogTitle>
           <DialogDescription>
@@ -328,32 +385,84 @@ export function ImportProductsDialog({
         {selectedRows.size > 0 && (
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-3 -mb-2 mt-2 bg-muted rounded-md border">
             <p className="text-sm font-medium flex-shrink-0">{selectedRows.size} producto(s) seleccionado(s)</p>
-            <div className="flex-grow grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+            <div className="flex-grow grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
               <div className='flex items-center gap-2'>
-                <Select value={bulkCategoryId} onValueChange={setBulkCategoryId}>
+                <Select value={bulkCurrency} onValueChange={(v: 'DOP' | 'USD') => setBulkCurrency(v)}>
+                  <SelectTrigger className="w-full bg-background h-9">
+                    <SelectValue placeholder="Asignar moneda..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DOP">DOP</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button size="sm" onClick={handleApplyBulkCurrency} disabled={!bulkCurrency}>Aplicar</Button>
+              </div>
+
+
+              <div className='flex items-center gap-2'>
+                <Select
+                  value={bulkCategoryId}
+                  onValueChange={(val) => {
+                    if (val === 'NEW_CATEGORY_TRIGGER') {
+                      setIsCreatingCategory(true);
+                    } else {
+                      setBulkCategoryId(val);
+                    }
+                  }}
+                >
                   <SelectTrigger className="w-full bg-background h-9">
                     <SelectValue placeholder="Asignar categoría..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {existingCategories.map((type: Category) => (
+                    {localCategories.map((type: Category) => (
                       <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
                     ))}
+                    <SelectItem value="NEW_CATEGORY_TRIGGER" className="text-primary font-medium focus:bg-primary/10">
+                      <div className="flex items-center gap-2">
+                        <PlusCircle className="h-4 w-4" />
+                        Crear Nueva...
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <Button size="sm" onClick={handleApplyBulkCategory} disabled={!bulkCategoryId}>Aplicar</Button>
+
+                {/* Inline Creation Dialog */}
+                <Dialog open={isCreatingCategory} onOpenChange={setIsCreatingCategory}>
+                  <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                      <DialogTitle>Nueva Categoría</DialogTitle>
+                      <DialogDescription>Nombre para la nueva categoría.</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                      <Input
+                        placeholder="Ej: Bebidas"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleCreateCategory()}
+                        autoFocus
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button variant="ghost" onClick={() => setIsCreatingCategory(false)}>Cancelar</Button>
+                      <Button onClick={handleCreateCategory} disabled={!newCategoryName.trim()}>Crear</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
               <div className='flex items-center gap-2'>
                 <div className='relative w-full sm:w-[150px]'>
                   <Input
                     type="number"
-                    placeholder="Ej: 30"
+                    placeholder="Mg %"
                     value={bulkMargin}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBulkMargin(e.target.value)}
-                    className="bg-background h-9 pr-8"
+                    className="bg-background h-9 pr-6"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
                 </div>
-                <Button size="sm" onClick={handleApplyBulkMargin} disabled={!bulkMargin}>Aplicar Margen</Button>
+                <Button size="sm" onClick={handleApplyBulkMargin} disabled={!bulkMargin}>Margen</Button>
               </div>
             </div>
           </div>

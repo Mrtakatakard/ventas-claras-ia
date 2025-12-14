@@ -1,37 +1,36 @@
-import { onRequest } from "firebase-functions/v2/https";
-import * as logger from "firebase-functions/logger";
-import { conversationAgent } from "../ai/conversationAgent";
 
-// TODO: Move this to environment variables
-const VERIFY_TOKEN = "ventas-claras-secret-token";
+import { onRequest } from 'firebase-functions/v2/https';
+import * as logger from 'firebase-functions/logger';
+import { db } from '../config/firebase';
+import { defineString } from 'firebase-functions/params';
 
-export const webhook = onRequest({ cors: true }, async (req, res) => {
-    // 1. Handle Webhook Verification (GET)
-    if (req.method === "GET") {
-        const mode = req.query["hub.mode"];
-        const token = req.query["hub.verify_token"];
-        const challenge = req.query["hub.challenge"];
+// Environmental Variables (Secrets)
+// These need to be set in your Firebase project using: firebase functions:secrets:set WHATSAPP_VERIFY_TOKEN
+const WHATSAPP_VERIFY_TOKEN = defineString('WHATSAPP_VERIFY_TOKEN');
 
-        if (mode && token) {
-            if (mode === "subscribe" && token === VERIFY_TOKEN) {
-                logger.info("WEBHOOK_VERIFIED");
-                res.status(200).send(challenge);
-            } else {
-                res.sendStatus(403);
-            }
+export const webhook = onRequest({ maxInstances: 10 }, async (req, res) => {
+    // 1. VERIFICATION REQUEST (GET)
+    // Meta sends this to verify we own the endpoint.
+    if (req.method === 'GET') {
+        const mode = req.query['hub.mode'];
+        const token = req.query['hub.verify_token'];
+        const challenge = req.query['hub.challenge'];
+
+        if (mode === 'subscribe' && token === WHATSAPP_VERIFY_TOKEN.value()) {
+            logger.info('WEBHOOK_VERIFIED');
+            res.status(200).send(challenge);
         } else {
-            res.sendStatus(400); // Bad Request if parameters are missing
+            logger.warn('WEBHOOK_VERIFICATION_FAILED', { mode, token });
+            res.sendStatus(403);
         }
         return;
     }
 
-    // 2. Handle Message Events (POST)
-    if (req.method === "POST") {
+    // 2. EVENT NOTIFICATION (POST)
+    if (req.method === 'POST') {
         const body = req.body;
 
-        logger.info("Incoming Webhook Payload:", JSON.stringify(body, null, 2));
-
-        // Check if this is an event from a WhatsApp API subscription
+        // Check if it's a WhatsApp status update or message
         if (body.object) {
             if (
                 body.entry &&
@@ -41,25 +40,40 @@ export const webhook = onRequest({ cors: true }, async (req, res) => {
                 body.entry[0].changes[0].value.messages[0]
             ) {
                 const message = body.entry[0].changes[0].value.messages[0];
-                const from = message.from; // Sender phone number
-                const messageType = message.type;
+                const fromRaw = message.from; // e.g., "18095551234"
+                const from = '+' + fromRaw; // Normalize to E.164 matches our DB storage "+1809..."
 
-                logger.info(`Received message from ${from}. Type: ${messageType}`);
+                logger.info('MESSAGE_RECEIVED', { from, type: message.type });
 
-                if (messageType === 'text') {
-                    const textBody = message.text.body;
-                    await conversationAgent.handleMessage(from, textBody);
+                try {
+                    // 3. IDENTIFY CLIENT (The "Ear" Logic)
+                    const usersRef = db.collection('users');
+                    // We search for the user who OWNS this phone number.
+                    const querySnapshot = await usersRef.where('phoneNumber', '==', from).limit(1).get();
+
+                    if (!querySnapshot.empty) {
+                        const userDoc = querySnapshot.docs[0];
+                        const userData = userDoc.data();
+                        logger.info('USER_IDENTIFIED', { userId: userDoc.id, name: userData.name });
+
+                        // TODO: Step 4 - Pass to AI Service (Gemini)
+                        // await processMessageWithAI(userDoc.id, message);
+
+                    } else {
+                        logger.warn('USER_NOT_FOUND', { from });
+                        // Optional: Send a "You are not registered" reply here (requires whatsappService)
+                    }
+
+                } catch (error) {
+                    logger.error('ERROR_PROCESSING_MESSAGE', error);
                 }
-
-                res.sendStatus(200);
-            } else {
-                // Not a message event or unexpected format
-                res.sendStatus(200); // Acknowledge anyway to prevent retries
             }
+
+            // Return a 200 OK to acknowledge receipt of the event
+            res.sendStatus(200);
         } else {
+            // Return a 404 if the event is not from a WhatsApp API
             res.sendStatus(404);
         }
-    } else {
-        res.sendStatus(405); // Method Not Allowed
     }
 });
