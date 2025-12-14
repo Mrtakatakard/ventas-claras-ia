@@ -39,16 +39,21 @@ const formSchema = z.object({
   defaultAddressIndex: z.coerce.number({ invalid_type_error: "Debes seleccionar una dirección por defecto." }).min(0, "Debes seleccionar una dirección por defecto."),
 })
 
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { AddClientTypeForm } from "@/components/add-client-type-form"
+
 interface AddClientFormProps {
   onSuccess: () => void;
   client: Client | null;
   clientTypes: ClientType[];
+  onClientTypeAdded?: () => void;
 }
 
-export function AddClientForm({ onSuccess, client, clientTypes }: AddClientFormProps) {
+export function AddClientForm({ onSuccess, client, clientTypes, onClientTypeAdded }: AddClientFormProps) {
   const { toast } = useToast()
   const { userId } = useAuth();
   const isEditing = !!client;
+  const [isAddTypeOpen, setIsAddTypeOpen] = React.useState(false);
 
   const defaultAddressIndex = client?.addresses?.findIndex(a => a.isDefault);
 
@@ -159,98 +164,138 @@ export function AddClientForm({ onSuccess, client, clientTypes }: AddClientFormP
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField control={form.control} name="name" render={({ field }) => (
-            <FormItem className="md:col-span-2"><FormLabel>Nombre de Contacto</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
-          )} />
-          <FormField control={form.control} name="companyName" render={({ field }) => (
-            <FormItem className="md:col-span-2"><FormLabel>Razón Social (Empresa)</FormLabel><FormControl><Input placeholder="Mi Empresa S.R.L" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-          )} />
-          <FormField control={form.control} name="email" render={({ field }) => (
-            <FormItem><FormLabel>Correo Electrónico (Opcional)</FormLabel><FormControl><Input placeholder="nombre@ejemplo.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-          )} />
-          <FormField control={form.control} name="phone" render={({ field }) => (
-            <FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input placeholder="809-123-4567" {...field} /></FormControl><FormMessage /></FormItem>
-          )} />
-          <FormField control={form.control} name="rnc" render={({ field }) => (
-            <FormItem>
-              <FormLabel>RNC / Cédula (Opcional)</FormLabel>
-              <FormControl>
-                <Input placeholder="001-0000000-0" {...field} value={field.value ?? ''} />
-              </FormControl>
-              <FormDescription>
-                Ingrese el RNC o Cédula manualmente.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="birthday" render={({ field }) => (
-            <FormItem><FormLabel>Cumpleaños (Opcional)</FormLabel><FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-          )} />
-          <FormField control={form.control} name="clientTypeId" render={({ field }) => (
-            <FormItem><FormLabel>Tipo de Cliente</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un tipo de cliente" /></SelectTrigger></FormControl>
-                <SelectContent>{clientTypes.map(type => (<SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>))}</SelectContent>
-              </Select><FormMessage /></FormItem>
-          )} />
-        </div>
-
-        <div className="space-y-4 rounded-lg border p-4">
-          <div className="flex justify-between items-center">
-            <FormLabel>Direcciones</FormLabel>
-            <Button type="button" size="sm" variant="outline" onClick={() => append({ alias: '', fullAddress: '' })}><PlusCircle className="mr-2 h-4 w-4" />Agregar</Button>
-          </div>
-          <FormDescription>Agrega una o más direcciones para el cliente. Selecciona una como predeterminada.</FormDescription>
-          <FormField
-            control={form.control}
-            name="defaultAddressIndex"
-            render={({ field }) => (
-              <FormItem className="space-y-3">
+    <>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField control={form.control} name="name" render={({ field }) => (
+              <FormItem className="md:col-span-2"><FormLabel>Nombre de Contacto</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="companyName" render={({ field }) => (
+              <FormItem className="md:col-span-2"><FormLabel>Razón Social (Empresa)</FormLabel><FormControl><Input placeholder="Mi Empresa S.R.L" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="email" render={({ field }) => (
+              <FormItem><FormLabel>Correo Electrónico (Opcional)</FormLabel><FormControl><Input placeholder="nombre@ejemplo.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="phone" render={({ field }) => (
+              <FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input placeholder="809-123-4567" {...field} /></FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="rnc" render={({ field }) => (
+              <FormItem>
+                <FormLabel>RNC / Cédula (Opcional)</FormLabel>
                 <FormControl>
-                  <RadioGroup
-                    onValueChange={(value) => field.onChange(parseInt(value))}
-                    value={field.value?.toString()}
-                    className="flex flex-col space-y-3"
-                  >
-                    {fields.map((addressField: any, index: number) => (
-                      <div key={addressField.id} className="p-3 rounded-md border bg-muted/50 space-y-3 relative">
-                        <div className="flex items-start gap-3">
-                          <FormControl>
-                            <RadioGroupItem value={index.toString()} className="mt-1" />
-                          </FormControl>
-                          <div className="grid gap-2 w-full">
-                            <FormField control={form.control} name={`addresses.${index}.alias` as const} render={({ field }: { field: any }) => (
-                              <FormItem><FormLabel>Alias</FormLabel><FormControl><Input placeholder="Casa, Oficina..." {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
-                            <FormField control={form.control} name={`addresses.${index}.fullAddress` as const} render={({ field }: { field: any }) => (
-                              <FormItem><FormLabel>Dirección Completa</FormLabel><FormControl><Input placeholder="Calle Falsa 123, Santo Domingo" {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
-                          </div>
-                        </div>
-                        <div className="absolute top-2 right-2">
-                          <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => remove(index)} disabled={fields.length <= 1}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </RadioGroup>
+                  <Input placeholder="001-0000000-0" {...field} value={field.value ?? ''} />
                 </FormControl>
+                <FormDescription>
+                  Ingrese el RNC o Cédula manualmente.
+                </FormDescription>
                 <FormMessage />
               </FormItem>
-            )}
-          />
-        </div>
+            )} />
+            <FormField control={form.control} name="birthday" render={({ field }) => (
+              <FormItem><FormLabel>Cumpleaños (Opcional)</FormLabel><FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="clientTypeId" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tipo de Cliente</FormLabel>
+                <div className="flex items-center gap-2">
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecciona un tipo de cliente" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {clientTypes.map(type => (<SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsAddTypeOpen(true)}
+                    title="Agregar Nuevo Tipo"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                  </Button>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )} />
+          </div>
 
-        <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={handleCancel}>Cancelar</Button>
-          <Button type="submit">{isEditing ? 'Guardar Cambios' : 'Agregar Cliente'}</Button>
-        </div>
-      </form>
-    </Form>
+          <div className="space-y-4 rounded-lg border p-4">
+            <div className="flex justify-between items-center">
+              <FormLabel>Direcciones</FormLabel>
+              <Button type="button" size="sm" variant="outline" onClick={() => append({ alias: '', fullAddress: '' })}><PlusCircle className="mr-2 h-4 w-4" />Agregar</Button>
+            </div>
+            <FormDescription>Agrega una o más direcciones para el cliente. Selecciona una como predeterminada.</FormDescription>
+            <FormField
+              control={form.control}
+              name="defaultAddressIndex"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={(value) => field.onChange(parseInt(value))}
+                      value={field.value?.toString()}
+                      className="flex flex-col space-y-3"
+                    >
+                      {fields.map((addressField: any, index: number) => (
+                        <div key={addressField.id} className="p-3 rounded-md border bg-muted/50 space-y-3 relative">
+                          <div className="flex items-start gap-3">
+                            <FormControl>
+                              <RadioGroupItem value={index.toString()} className="mt-1" />
+                            </FormControl>
+                            <div className="grid gap-2 w-full">
+                              <FormField control={form.control} name={`addresses.${index}.alias` as const} render={({ field }: { field: any }) => (
+                                <FormItem><FormLabel>Alias</FormLabel><FormControl><Input placeholder="Casa, Oficina..." {...field} /></FormControl><FormMessage /></FormItem>
+                              )} />
+                              <FormField control={form.control} name={`addresses.${index}.fullAddress` as const} render={({ field }: { field: any }) => (
+                                <FormItem><FormLabel>Dirección Completa</FormLabel><FormControl><Input placeholder="Calle Falsa 123, Santo Domingo" {...field} /></FormControl><FormMessage /></FormItem>
+                              )} />
+                            </div>
+                          </div>
+                          <div className="absolute top-2 right-2">
+                            <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => remove(index)} disabled={fields.length <= 1}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={handleCancel}>Cancelar</Button>
+            <Button type="submit">{isEditing ? 'Guardar Cambios' : 'Agregar Cliente'}</Button>
+          </div>
+        </form>
+      </Form>
+
+      <Dialog open={isAddTypeOpen} onOpenChange={setIsAddTypeOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Agregar Tipo de Cliente</DialogTitle>
+            <DialogDescription>
+              Crea un nuevo tipo de cliente rápidamente.
+            </DialogDescription>
+          </DialogHeader>
+          <AddClientTypeForm
+            clientType={null}
+            onSuccess={() => {
+              setIsAddTypeOpen(false);
+              onClientTypeAdded?.();
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 

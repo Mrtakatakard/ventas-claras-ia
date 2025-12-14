@@ -270,7 +270,13 @@ function ClientsContent() {
                 }
               </DialogDescription>
             </DialogHeader>
-            <AddClientForm onSuccess={onFormSuccess} client={editingClient} clientTypes={clientTypes} key={editingClient?.id || 'new-client'} />
+            <AddClientForm
+              onSuccess={onFormSuccess}
+              client={editingClient}
+              clientTypes={clientTypes}
+              key={editingClient?.id || 'new-client'}
+              onClientTypeAdded={fetchData}
+            />
           </DialogContent>
         </Dialog>
       </PageHeader>
