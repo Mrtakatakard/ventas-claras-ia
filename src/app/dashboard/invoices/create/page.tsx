@@ -401,7 +401,9 @@ export default function CreateInvoicePage() {
         // Check for stock issues
         for (const [productId, totalQuantity] of productQuantities.entries()) {
             const product = products.find(p => p.id === productId);
-            if (product && product.productType === 'good' && totalQuantity > getProductStock(product)) {
+            const type = product?.productType || 'good'; // Default to 'good' to match backend
+
+            if (product && type === 'good' && totalQuantity > getProductStock(product)) {
                 hasStockIssues = true;
                 break;
             }

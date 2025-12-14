@@ -8,4 +8,5 @@ if (!admin.apps.length) {
 
 export const app = admin.app();
 export const db = admin.firestore();
+db.settings({ ignoreUndefinedProperties: true });
 export const auth = admin.auth();
