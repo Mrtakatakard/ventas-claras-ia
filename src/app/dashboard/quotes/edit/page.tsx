@@ -476,6 +476,7 @@ export default function EditQuotePage() {
                                             <Label htmlFor="client">Cliente</Label>
                                             <ClientSelector
                                                 clients={clients}
+                                                clientTypes={clientTypes}
                                                 selectedClientId={selectedClientId}
                                                 onSelectClient={setSelectedClientId}
                                             />

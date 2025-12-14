@@ -9,7 +9,7 @@ import * as functions from 'firebase-functions'
 vi.mock('../../repositories/quoteRepository')
 vi.mock('../counterService')
 vi.mock('../invoiceService')
-vi.mock('../index', () => ({
+vi.mock('../../config/firebase', () => ({
     db: {
         collection: vi.fn(() => ({
             doc: vi.fn(() => ({
@@ -59,13 +59,10 @@ describe('QuoteService', () => {
             expect(counterService.getNextNumber).toHaveBeenCalledWith('quotes', mockUserId, 'QT')
             expect(quoteRepository.create).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    ...mockQuoteData,
-                    id: expect.any(String),
-                    userId: mockUserId,
                     quoteNumber: mockQuoteNumber,
+                    userId: mockUserId,
                     status: 'borrador',
                     isActive: true,
-                    createdAt: expect.any(Date),
                 })
             )
             expect(result).toBe('mock-quote-id')

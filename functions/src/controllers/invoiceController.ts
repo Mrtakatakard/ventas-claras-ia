@@ -13,15 +13,16 @@ export const invoices = onCall({ cors: true, maxInstances: 1, cpu: 0.5 }, async 
     try {
         switch (action) {
             case 'create': {
-                const validatedData = createInvoiceSchema.parse(data);
-                return await invoiceService.createInvoice(validatedData, userId);
+                const { allowBackorder, ...invoiceData } = data;
+                const validatedData = createInvoiceSchema.parse(invoiceData);
+                return await invoiceService.createInvoice(validatedData, userId, allowBackorder);
             }
 
             case 'update': {
-                const { id, ...updateData } = data;
+                const { id, allowBackorder, ...updateData } = data;
                 const validatedData = updateInvoiceSchema.parse({ id, ...updateData });
                 const { id: _id, ...cleanData } = validatedData;
-                return await invoiceService.updateInvoice(id, cleanData, userId);
+                return await invoiceService.updateInvoice(id, cleanData, userId, allowBackorder);
             }
 
             case 'delete':

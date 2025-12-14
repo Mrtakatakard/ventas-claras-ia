@@ -13,12 +13,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Trash2, PackageSearch, Loader2 } from 'lucide-react';
+import { PlusCircle, Trash2, PackageSearch, Loader2, Minus, Plus } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/hooks';
 import { getClients, getProducts, getClientTypes } from '@/lib/firebase/service';
 import { invoiceApi } from '@/lib/api/invoiceApi';
 import { ncfApi } from '@/lib/api/ncfApi';
-import type { Client, Product, InvoiceItem, Invoice, ClientType, Address, NCFSequence } from '@/lib/types';
+import type { Client, Product, InvoiceItem, Invoice, ClientType, Address, NCFSequence, TaxSettings } from '@/lib/types';
+import { taxApi } from '@/lib/api/taxApi';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ClientSelector } from '@/components/client-selector';
 import { Switch } from '@/components/ui/switch';
@@ -26,6 +27,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { logAnalyticsEvent } from '@/lib/firebase/analytics';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { MagicImportButton } from '@/components/invoices/magic-import-button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 type InvoiceItemState = {
     id: number;
@@ -49,6 +51,7 @@ export default function CreateInvoicePage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
     const [ncfSequences, setNcfSequences] = useState<NCFSequence[]>([]);
+    const [taxSettings, setTaxSettings] = useState<TaxSettings[]>([]);
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -62,9 +65,14 @@ export default function CreateInvoicePage() {
     const [includeITBIS, setIncludeITBIS] = useState(true);
     const [itbisRate, setItbisRate] = useState(DEFAULT_ITBIS_RATE); // State for rate selection
     const [useCostPrice, setUseCostPrice] = useState(false);
+    const [showBackorderAlert, setShowBackorderAlert] = useState(false);
+    const [pendingInvoice, setPendingInvoice] = useState<any>(null); // Temp store for reuse in confirmation
 
     const getProductStock = (product: Product) => {
-        return product.batches?.reduce((acc, batch) => acc + batch.stock, 0) || 0;
+        if (product.batches && product.batches.length > 0) {
+            return product.batches.reduce((acc, batch) => acc + batch.stock, 0);
+        }
+        return product.stock || 0;
     };
 
     const formatCurrency = (num: number, currency?: 'DOP' | 'USD') => {
@@ -72,15 +80,17 @@ export default function CreateInvoicePage() {
     };
 
     useEffect(() => {
+        console.log("🚀 VISTA DE FACTURAS v2.5 CARGADA - Check Backorder Fix");
         const fetchData = async () => {
             if (!userId) return;
             setLoading(true);
             try {
-                const [clientsData, productsData, clientTypesData, sequencesData] = await Promise.all([
+                const [clientsData, productsData, clientTypesData, sequencesData, taxesData] = await Promise.all([
                     getClients(userId),
                     getProducts(userId),
                     getClientTypes(userId),
-                    ncfApi.getSequences()
+                    ncfApi.getSequences(),
+                    taxApi.getTaxes()
                 ]);
 
                 const clientTypesMap = new Map(clientTypesData.map(ct => [ct.id, ct.name]));
@@ -93,6 +103,7 @@ export default function CreateInvoicePage() {
                 setProducts(productsData);
                 setClientTypes(clientTypesData);
                 setNcfSequences(sequencesData);
+                setTaxSettings(taxesData || []);
             } catch (error) {
                 toast({ title: "Error", description: "No se pudieron cargar los datos necesarios.", variant: "destructive" });
             } finally {
@@ -155,11 +166,14 @@ export default function CreateInvoicePage() {
 
             // Determine rate
             let rate = 0;
-            if (taxType === '1') rate = 0.18;
-            else if (taxType === '2') rate = 0.16;
-            // '3' (Exempt) and '4' (0%) stay 0
-
-            const isExempt = taxType === '3' || product.isTaxExempt;
+            if (taxType === 'exempt') {
+                rate = 0;
+            } else {
+                const taxConf = taxSettings.find(t => t.id === taxType);
+                rate = taxConf ? taxConf.rate : 0;
+            }
+            // '3' (Exempt) and '4' (0%) mapped to 'exempt' or 0 rate settings
+            const isExempt = taxType === 'exempt' || product.isTaxExempt;
 
             if (!isExempt) {
                 currentTaxableSubtotal += itemNetTotal;
@@ -188,7 +202,7 @@ export default function CreateInvoicePage() {
     }, [items, products, includeITBIS, itbisRate, useCostPrice]);
 
 
-    const handleAddItem = () => setItems([...items, { id: Date.now(), productId: '', quantity: 1, discount: 0, numberOfPeople: 1, taxType: '1', goodServiceIndicator: '1' }]);
+    const handleAddItem = () => setItems([...items, { id: Date.now(), productId: '', quantity: 1, discount: 0, numberOfPeople: 1, taxType: taxSettings.find(t => t.isDefault)?.id || 'exempt', goodServiceIndicator: '1' }]);
     const handleRemoveItem = (id: number) => setItems(items.filter((item) => item.id !== id));
 
     const handleItemChange = (id: number, field: 'productId' | 'quantity' | 'discount' | 'numberOfPeople' | 'taxType' | 'goodServiceIndicator', value: string) => {
@@ -203,7 +217,7 @@ export default function CreateInvoicePage() {
                     quantity: 1,
                     numberOfPeople: 1,
                     // Initialize with product defaults
-                    taxType: product?.taxType || '1',
+                    taxType: product?.taxType || taxSettings.find(t => t.isDefault)?.id || 'exempt',
                     goodServiceIndicator: (product?.productType === 'service' ? '2' : '1') as '1' | '2',
                 };
             }
@@ -227,23 +241,6 @@ export default function CreateInvoicePage() {
                     return { ...item, quantity: 1 };
                 }
 
-                const product = products.find(p => p.id === item.productId);
-                if (!product) return { ...item, quantity: newQuantity }; // No product selected yet
-
-                const quantityInOtherLines = items
-                    .filter(i => i.id !== id && i.productId === item.productId)
-                    .reduce((sum, i) => sum + i.quantity, 0);
-
-                const availableStock = getProductStock(product) - quantityInOtherLines;
-
-                if (newQuantity > availableStock) {
-                    toast({
-                        title: "Stock insuficiente",
-                        description: `Solo quedan ${availableStock} unidades disponibles de ${product.name} (considerando otras líneas).`,
-                        variant: "destructive",
-                    });
-                    return { ...item, quantity: Math.max(1, availableStock) };
-                }
                 return { ...item, quantity: newQuantity };
             }
 
@@ -298,23 +295,7 @@ export default function CreateInvoicePage() {
             }
         }
 
-        for (const [productId, totalQuantity] of productQuantities.entries()) {
-            const product = products.find(p => p.id === productId);
-            if (!product) {
-                toast({ title: "Error", description: `Un producto seleccionado ya no es válido.`, variant: "destructive" });
-                setIsSaving(false);
-                return;
-            }
-            if (totalQuantity > getProductStock(product)) {
-                toast({
-                    title: "Stock Insuficiente",
-                    description: `La cantidad total para "${product.name}" (${totalQuantity}) excede el stock disponible de ${getProductStock(product)} unidades.`,
-                    variant: "destructive"
-                });
-                setIsSaving(false);
-                return;
-            }
-        }
+
 
         const invoiceItems: InvoiceItem[] = finalItemsState.map(item => {
             const product = products.find(p => p.id === item.productId)!;
@@ -328,8 +309,8 @@ export default function CreateInvoicePage() {
                 unitPrice: unitPrice,
                 discount: item.discount || 0,
                 finalPrice: unitPrice - discountAmount,
-                isTaxExempt: item.taxType === '3', // If they chose Exempt
-                taxType: item.taxType || product.taxType || '1',
+                isTaxExempt: item.taxType === 'exempt', // If they chose Exempt
+                taxType: item.taxType || product.taxType || taxSettings.find(t => t.isDefault)?.id || 'exempt',
                 goodServiceIndicator: item.goodServiceIndicator || (product.productType === 'service' ? '2' : '1'),
             };
 
@@ -363,16 +344,19 @@ export default function CreateInvoicePage() {
             grossSubtotal += itemTotal;
             currentDiscountTotal += itemDiscountAmount;
 
-            if (!product.isTaxExempt && item.taxType !== '3') {
+            if (!product.isTaxExempt && item.taxType !== 'exempt') {
                 currentTaxableSubtotal += itemNetTotal;
             }
 
             // Calculate Item Tax
-            const taxType = item.taxType || product.taxType || '1';
+            const taxType = item.taxType || product.taxType || taxSettings.find(t => t.isDefault)?.id || 'exempt';
             let rate = 0;
-            if (taxType === '1') rate = 0.18;
-            else if (taxType === '2') rate = 0.16;
-            // If taxType is '3' (Exempt) or '4' (0%), rate remains 0.
+            if (taxType === 'exempt') {
+                rate = 0;
+            } else {
+                const taxConf = taxSettings.find(t => t.id === taxType);
+                rate = taxConf ? taxConf.rate : 0;
+            }
 
             if (includeITBIS) {
                 newItbis += itemNetTotal * rate;
@@ -410,18 +394,89 @@ export default function CreateInvoicePage() {
             createdAt: new Date(),
         };
 
+        let hasStockIssues = false;
+
+
+
+        // Check for stock issues
+        for (const [productId, totalQuantity] of productQuantities.entries()) {
+            const product = products.find(p => p.id === productId);
+            if (product && product.productType === 'good' && totalQuantity > getProductStock(product)) {
+                hasStockIssues = true;
+                break;
+            }
+        }
+
+        if (hasStockIssues) {
+            setPendingInvoice(newInvoice);
+            setShowBackorderAlert(true);
+            setIsSaving(false);
+            return;
+        }
+
+        await saveInvoiceToBackend(newInvoice, false);
+    };
+
+    const saveInvoiceToBackend = async (invoice: any, allowBackorder: boolean) => {
+        setIsSaving(true);
         try {
-            await invoiceApi.create(newInvoice);
+            await invoiceApi.create(invoice, allowBackorder);
             logAnalyticsEvent('invoice_created');
             toast({
                 title: 'Factura Creada',
-                description: 'La factura ha sido guardada y el stock actualizado.',
+                description: allowBackorder ? 'Se creó como Venta Anticipada (Stock Negativo).' : 'La factura ha sido guardada.',
             });
             router.push('/dashboard/invoices');
         } catch (e: any) {
-            toast({ title: "Error al guardar factura", description: e.message, variant: "destructive" });
+
+
+            // Robustly extract error message
+            // Robustly extract error message
+            const rawError = e.error || e; // Handle nested error object
+            const errorCode = rawError.code || rawError.status || e.code || 'unknown';
+            let errorMessage = rawError.message || e.message || "Error desconocido";
+
+            if (rawError.details) {
+                if (Array.isArray(rawError.details)) {
+                    errorMessage += " " + rawError.details.map((err: any) => err.message || JSON.stringify(err)).join(', ');
+                } else if (typeof rawError.details === 'string') {
+                    errorMessage += " " + rawError.details;
+                } else {
+                    errorMessage += " " + JSON.stringify(rawError.details);
+                }
+            }
+
+            // Check for stock error code OR text in the full message
+            // We check for:
+            // 1. 'functions/failed-precondition' (Firebase standard)
+            // 2. 'FAILED_PRECONDITION' (Raw gRPC/HTTP status)
+            // 3. Text 'Stock insuficiente'
+            const isStockError = (
+                errorCode === 'foundations/failed-precondition' ||
+                errorCode === 'functions/failed-precondition' ||
+                errorCode === 'FAILED_PRECONDITION' ||
+                errorMessage.includes('Stock insuficiente')
+            );
+
+            if (isStockError && !allowBackorder) {
+                // This is a handled flow, so we don't need a scary console error
+                console.log("Validación de stock requerida. Mostrando alerta de backorder.");
+                setPendingInvoice(invoice);
+                setShowBackorderAlert(true);
+            } else {
+                // Real error
+                console.error("Error al guardar factura:", e);
+                toast({ title: "Error al guardar factura", description: errorMessage, variant: "destructive" });
+            }
         } finally {
             setIsSaving(false);
+            if (allowBackorder) setShowBackorderAlert(false);
+        }
+    };
+
+    const handleConfirmBackorder = () => {
+        if (pendingInvoice) {
+            saveInvoiceToBackend(pendingInvoice, true);
         }
     };
 
@@ -523,7 +578,7 @@ export default function CreateInvoicePage() {
                                         <TableHeader>
                                             <TableRow>
                                                 <TableHead>Producto</TableHead>
-                                                <TableHead className="w-[100px]">Cant.</TableHead>
+                                                <TableHead className="w-[120px]">Cant.</TableHead>
                                                 {isRestockTrackingEnabled && <TableHead className="w-[100px]">Personas</TableHead>}
                                                 <TableHead className="w-[140px] text-right">Precio</TableHead>
                                                 <TableHead className="w-[100px] text-right">Desc. (%)</TableHead>
@@ -547,9 +602,8 @@ export default function CreateInvoicePage() {
                                                                 <SelectTrigger><SelectValue placeholder="Seleccionar producto..." /></SelectTrigger>
                                                                 <SelectContent>
                                                                     {availableProducts
-                                                                        .filter(p => getProductStock(p) > 0 || p.id === item.productId)
                                                                         .map((p) => (
-                                                                            <SelectItem key={p.id} value={p.id} disabled={getProductStock(p) <= 0 && p.id !== item.productId}>
+                                                                            <SelectItem key={p.id} value={p.id}>
                                                                                 <div className="flex items-center gap-2">
                                                                                     {p.imageUrl && (
                                                                                         <img
@@ -566,7 +620,15 @@ export default function CreateInvoicePage() {
                                                                 </SelectContent>
                                                             </Select>
                                                         </TableCell>
-                                                        <TableCell><Input type="number" min="1" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} /></TableCell>
+                                                        <TableCell>
+                                                            <Input
+                                                                type="number"
+                                                                min="1"
+                                                                value={item.quantity}
+                                                                onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)}
+                                                                className="h-8 w-20 text-center mx-auto [&::-webkit-inner-spin-button]:appearance-none"
+                                                            />
+                                                        </TableCell>
                                                         {isRestockTrackingEnabled && (
                                                             <TableCell>
                                                                 <Input
@@ -583,8 +645,12 @@ export default function CreateInvoicePage() {
                                                             <Select value={item.taxType || '1'} onValueChange={(value) => handleItemChange(item.id, 'taxType', value)}>
                                                                 <SelectTrigger className="h-8 w-[100px]"><SelectValue /></SelectTrigger>
                                                                 <SelectContent>
-                                                                    <SelectItem value="1">18%</SelectItem>
-                                                                    <SelectItem value="3">Exento</SelectItem>
+                                                                    {taxSettings.map(tax => (
+                                                                        <SelectItem key={tax.id} value={tax.id}>
+                                                                            {tax.name}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                    <SelectItem value="exempt">Exento</SelectItem>
                                                                 </SelectContent>
                                                             </Select>
                                                         </TableCell>
@@ -671,13 +737,14 @@ export default function CreateInvoicePage() {
                                             <Label htmlFor="client">Cliente</Label>
                                             <ClientSelector
                                                 clients={clients}
+                                                clientTypes={clientTypes}
                                                 selectedClientId={selectedClientId}
                                                 onSelectClient={setSelectedClientId}
                                             />
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="address">Dirección de Envío</Label>
-                                            <Select value={selectedAddressId} onValueChange={setSelectedAddressId} disabled={!selectedClient || !selectedClient.addresses?.length}>
+                                            <Select value={selectedAddressId || ''} onValueChange={setSelectedAddressId} disabled={!selectedClient || !selectedClient.addresses?.length}>
                                                 <SelectTrigger id="address">
                                                     <SelectValue placeholder={
                                                         !selectedClient
@@ -767,6 +834,22 @@ export default function CreateInvoicePage() {
                     </Card>
                 </div>
             </div>
+            <AlertDialog open={showBackorderAlert} onOpenChange={setShowBackorderAlert}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Stock Insuficiente</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Algunos productos no tienen stock suficiente. ¿Deseas proceder con una <strong>Venta Anticipada</strong>?
+                            <br /><br />
+                            Esto creará un stock negativo que aparecerá en tu <strong>Lista de Compras</strong> como prioritario.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmBackorder}>Confirmar Venta Anticipada</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }

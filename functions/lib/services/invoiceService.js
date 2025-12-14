@@ -7,10 +7,31 @@ const functions = require("firebase-functions");
 const firestore_1 = require("firebase-admin/firestore");
 const counterService_1 = require("./counterService");
 const ncfService_1 = require("./ncfService");
-const createInvoice = async (invoiceData, userId) => {
+const createInvoice = async (invoiceData, userId, allowBackorder = false) => {
     const invoiceId = firebase_1.db.collection('invoices').doc().id;
-    // Generate sequential invoice number
-    const invoiceNumber = await counterService_1.counterService.getNextNumber('invoices', userId, 'INV');
+    let invoiceNumber = '';
+    let isUnique = false;
+    let retries = 0;
+    while (!isUnique && retries < 10) {
+        invoiceNumber = await counterService_1.counterService.getNextNumber('invoices', userId, 'INV');
+        // Check if this number is already in use
+        const existingDocs = await firebase_1.db.collection('invoices')
+            .where('userId', '==', userId)
+            .where('invoiceNumber', '==', invoiceNumber)
+            .limit(1)
+            .get();
+        if (existingDocs.empty) {
+            isUnique = true;
+        }
+        else {
+            // Collision detected (counter lagging). Loop will try next number.
+            console.warn(`Collision detected for invoice number ${invoiceNumber}. Retrying...`);
+            retries++;
+        }
+    }
+    if (!isUnique) {
+        throw new functions.https.HttpsError('internal', 'No se pudo generar un número de factura único después de múltiples intentos.');
+    }
     // Generate NCF if type is provided
     let ncf = '';
     if (invoiceData.ncfType && invoiceData.ncfType !== 'Sin NCF') {
@@ -18,7 +39,6 @@ const createInvoice = async (invoiceData, userId) => {
     }
     const newInvoice = Object.assign(Object.assign({}, invoiceData), { id: invoiceId, userId, createdAt: new Date(), isActive: true, status: 'pendiente', balanceDue: invoiceData.total, payments: [], invoiceNumber: invoiceNumber, ncf: ncf || undefined, ncfType: invoiceData.ncfType });
     await firebase_1.db.runTransaction(async (transaction) => {
-        var _a;
         // 1. Check stock availability and decrement
         for (const item of newInvoice.items) {
             const productRef = firebase_1.db.collection('products').doc(item.productId);
@@ -26,11 +46,38 @@ const createInvoice = async (invoiceData, userId) => {
             if (!productDoc.exists) {
                 throw new functions.https.HttpsError('not-found', `Producto ${item.productName} no encontrado.`);
             }
-            const currentStock = ((_a = productDoc.data()) === null || _a === void 0 ? void 0 : _a.stock) || 0;
-            if (currentStock < item.quantity) {
+            const productData = productDoc.data() || {};
+            const itemType = productData.productType || 'good'; // Default to good for legacy
+            // If it's a service, we skip stock check and deduction entirely
+            if (itemType === 'service') {
+                continue;
+            }
+            const currentStock = productData.stock || 0;
+            const allowNegative = productData.allowNegativeStock || false;
+            // If allowBackorder is true, we skip the stock check completely
+            if (currentStock < item.quantity && !allowNegative && !allowBackorder) {
                 throw new functions.https.HttpsError('failed-precondition', `Stock insuficiente para ${item.productName}. Disponible: ${currentStock}, Solicitado: ${item.quantity}`);
             }
-            transaction.update(productRef, { stock: currentStock - item.quantity });
+            // FIFO Batch Deduction logic
+            let remainingToDeduct = item.quantity;
+            const updatedBatches = (productData.batches || []).map((b) => (Object.assign({}, b))); // Deep copy-ish
+            for (let i = 0; i < updatedBatches.length; i++) {
+                if (remainingToDeduct <= 0)
+                    break;
+                const batch = updatedBatches[i];
+                // Defensive check to ensure stock is a number
+                const bStock = typeof batch.stock === 'number' ? batch.stock : 0;
+                if (bStock > 0) {
+                    const deduct = Math.min(bStock, remainingToDeduct);
+                    batch.stock = bStock - deduct;
+                    remainingToDeduct -= deduct;
+                }
+            }
+            // Update stock and batches
+            transaction.update(productRef, {
+                stock: (currentStock || 0) - item.quantity,
+                batches: updatedBatches
+            });
         }
         // 2. Create Invoice
         const invoiceRef = firebase_1.db.collection('invoices').doc(invoiceId);
@@ -39,7 +86,7 @@ const createInvoice = async (invoiceData, userId) => {
     return invoiceId;
 };
 exports.createInvoice = createInvoice;
-const updateInvoice = async (id, updatedData, userId) => {
+const updateInvoice = async (id, updatedData, userId, allowBackorder = false) => {
     await firebase_1.db.runTransaction(async (transaction) => {
         const invoiceRef = firebase_1.db.collection('invoices').doc(id);
         const invoiceDoc = await transaction.get(invoiceRef);
@@ -69,7 +116,10 @@ const updateInvoice = async (id, updatedData, userId) => {
             // Revert old items
             for (const item of currentInvoice.items) {
                 if (productDocs[item.productId]) {
-                    productDocs[item.productId].data.stock += item.quantity;
+                    const pData = productDocs[item.productId].data;
+                    if (pData.productType === 'service')
+                        continue; // Skip services
+                    pData.stock += item.quantity;
                 }
             }
             // Apply new items
@@ -78,14 +128,20 @@ const updateInvoice = async (id, updatedData, userId) => {
                     throw new functions.https.HttpsError('not-found', `Producto ${item.productName} no encontrado (ID: ${item.productId}).`);
                 }
                 const product = productDocs[item.productId];
-                if (product.data.stock < item.quantity) {
-                    throw new functions.https.HttpsError('failed-precondition', `Stock insuficiente para ${item.productName}. Disponible: ${product.data.stock}, Solicitado: ${item.quantity}`);
+                const pData = product.data;
+                if (pData.productType === 'service')
+                    continue; // Skip services
+                if (pData.stock < item.quantity && !pData.allowNegativeStock && !allowBackorder) {
+                    throw new functions.https.HttpsError('failed-precondition', `Stock insuficiente para ${item.productName}. Disponible: ${pData.stock}, Solicitado: ${item.quantity}`);
                 }
-                product.data.stock -= item.quantity;
+                pData.stock -= item.quantity;
             }
             // 4. Write stock updates
             for (const pid of Object.keys(productDocs)) {
-                transaction.update(productDocs[pid].ref, { stock: productDocs[pid].data.stock });
+                const pData = productDocs[pid].data;
+                if (pData.productType === 'service')
+                    continue; // Double check, though logic above handles it
+                transaction.update(productDocs[pid].ref, { stock: pData.stock });
             }
         }
         // 5. Update Invoice
@@ -95,7 +151,6 @@ const updateInvoice = async (id, updatedData, userId) => {
 exports.updateInvoice = updateInvoice;
 const deleteInvoice = async (id, userId) => {
     await firebase_1.db.runTransaction(async (transaction) => {
-        var _a;
         const invoiceRef = firebase_1.db.collection('invoices').doc(id);
         const invoiceDoc = await transaction.get(invoiceRef);
         if (!invoiceDoc.exists) {
@@ -113,7 +168,10 @@ const deleteInvoice = async (id, userId) => {
             const productRef = firebase_1.db.collection('products').doc(item.productId);
             const productDoc = await transaction.get(productRef);
             if (productDoc.exists) {
-                const currentStock = ((_a = productDoc.data()) === null || _a === void 0 ? void 0 : _a.stock) || 0;
+                const productData = productDoc.data();
+                if ((productData === null || productData === void 0 ? void 0 : productData.productType) === 'service')
+                    continue; // Skip services
+                const currentStock = (productData === null || productData === void 0 ? void 0 : productData.stock) || 0;
                 transaction.update(productRef, { stock: currentStock + item.quantity });
             }
         }

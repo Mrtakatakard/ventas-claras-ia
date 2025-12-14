@@ -11,16 +11,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Trash2, PackageSearch, Info, Loader2 } from 'lucide-react';
+import { PlusCircle, Trash2, PackageSearch, Info, Loader2, Minus, Plus } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/hooks';
 import { getClients, getProducts, getInvoice, getClientTypes } from '@/lib/firebase/service';
 import { invoiceApi } from '@/lib/api/invoiceApi';
-import type { Client, Product, InvoiceItem, Invoice, ClientType, Address } from '@/lib/types';
+import type { Client, Product, InvoiceItem, Invoice, ClientType, Address, NCFSequence, TaxSettings } from '@/lib/types';
+import { taxApi } from '@/lib/api/taxApi';
+import { ncfApi } from '@/lib/api/ncfApi';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { ClientSelector } from '@/components/client-selector';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 
 type InvoiceItemState = {
@@ -29,9 +32,11 @@ type InvoiceItemState = {
     quantity: number;
     discount: number;
     numberOfPeople?: number;
+    taxType: string; // Added for tax selection
+    goodServiceIndicator: '1' | '2'; // Added for NCF
 };
 
-const ITBIS_RATE = 0.18;
+const ITBIS_RATE = 0.18; // This will be replaced by dynamic tax rates
 
 export default function EditInvoicePage() {
     const router = useRouter();
@@ -44,8 +49,12 @@ export default function EditInvoicePage() {
     const [clients, setClients] = useState<Client[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
+    const [ncfSequences, setNcfSequences] = useState<NCFSequence[]>([]);
+    const [taxSettings, setTaxSettings] = useState<TaxSettings[]>([]);
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [showBackorderAlert, setShowBackorderAlert] = useState(false);
+    const [pendingInvoice, setPendingInvoice] = useState<any>(null);
 
     // Form state
     const [selectedClientId, setSelectedClientId] = useState<string | undefined>(undefined);
@@ -58,7 +67,10 @@ export default function EditInvoicePage() {
     const useCostPrice = false;
 
     const getProductStock = (product: Product) => {
-        return product.batches?.reduce((acc, batch) => acc + batch.stock, 0) || 0;
+        if (product.batches && product.batches.length > 0) {
+            return product.batches.reduce((acc, batch) => acc + batch.stock, 0);
+        }
+        return product.stock || 0;
     };
 
     const formatCurrency = (num: number, currency?: 'DOP' | 'USD') => {
@@ -70,11 +82,13 @@ export default function EditInvoicePage() {
             if (!userId || !id) return;
             setLoading(true);
             try {
-                const [invoiceData, clientsData, productsData, clientTypesData] = await Promise.all([
+                const [invoiceData, clientsData, productsData, clientTypesData, sequencesData, taxesData] = await Promise.all([
                     getInvoice(id),
                     getClients(userId),
                     getProducts(userId),
-                    getClientTypes(userId)
+                    getClientTypes(userId),
+                    ncfApi.getSequences(),
+                    taxApi.getTaxes()
                 ]);
 
                 if (!invoiceData || invoiceData.userId !== userId) {
@@ -90,6 +104,8 @@ export default function EditInvoicePage() {
 
                 setInvoice(invoiceData);
                 setClientTypes(clientTypesData);
+                setNcfSequences(sequencesData);
+                setTaxSettings(taxesData || []);
 
                 const clientTypesMap = new Map(clientTypesData.map(ct => [ct.id, ct.name]));
                 const clientsWithTypeName = clientsData.map(client => ({
@@ -105,13 +121,18 @@ export default function EditInvoicePage() {
                 setInvoiceCurrency(invoiceData.currency);
                 setIssueDate(invoiceData.issueDate);
                 setDueDate(invoiceData.dueDate);
-                setItems(invoiceData.items.map((item, index) => ({
-                    id: Date.now() + index,
-                    productId: item.productId,
-                    quantity: item.quantity,
-                    discount: item.discount || 0,
-                    numberOfPeople: item.numberOfPeople || 1,
-                })));
+                setItems(invoiceData.items.map((item, index) => {
+                    const product = productsData.find(p => p.id === item.productId);
+                    return {
+                        id: Date.now() + index,
+                        productId: item.productId,
+                        quantity: item.quantity,
+                        discount: item.discount || 0,
+                        numberOfPeople: item.numberOfPeople || 1,
+                        taxType: item.taxType || product?.taxType || taxesData.find(t => t.isDefault)?.id || 'exempt',
+                        goodServiceIndicator: item.goodServiceIndicator || (product?.productType === 'service' ? '2' : '1'),
+                    };
+                }));
                 setIncludeITBIS(invoiceData.includeITBIS ?? true);
 
                 const clientForInvoice = clientsData.find(c => c.id === invoiceData.clientId);
@@ -153,22 +174,40 @@ export default function EditInvoicePage() {
     const getPrice = (product: Product | undefined) => product ? (useCostPrice ? (product.cost ?? 0) : (product.price || 0)) : 0;
 
     const { subtotal, discountTotal, netSubtotal, itbis, total } = useMemo(() => {
-        const grossSubtotal = items.reduce((acc, item) => {
-            const product = products.find((p) => p.id === item.productId);
-            return acc + (getPrice(product) * item.quantity);
-        }, 0);
+        let grossSubtotal = 0;
+        let currentDiscountTotal = 0;
+        let currentTaxableSubtotal = 0;
+        let currentItbis = 0;
 
-        const currentDiscountTotal = items.reduce((acc, item) => {
+        for (const item of items) {
             const product = products.find((p) => p.id === item.productId);
-            if (product && item.discount > 0) {
-                const itemTotal = getPrice(product) * item.quantity;
-                return acc + (itemTotal * (item.discount / 100));
+            if (!product) continue;
+
+            const unitPrice = getPrice(product);
+            const itemTotal = unitPrice * item.quantity;
+            grossSubtotal += itemTotal;
+
+            const itemDiscountAmount = itemTotal * (item.discount / 100);
+            currentDiscountTotal += itemDiscountAmount;
+
+            const itemNetTotal = itemTotal - itemDiscountAmount;
+
+            // Determine tax rate for the item
+            const taxType = item.taxType || product.taxType || taxSettings.find(t => t.isDefault)?.id || 'exempt';
+            let rate = 0;
+            if (taxType !== 'exempt') {
+                const taxConf = taxSettings.find(t => t.id === taxType);
+                rate = taxConf ? taxConf.rate : 0;
             }
-            return acc;
-        }, 0);
+
+            // Only add to taxable subtotal if ITBIS is included for the invoice and the item is not exempt
+            if (includeITBIS && taxType !== 'exempt') {
+                currentTaxableSubtotal += itemNetTotal;
+            }
+        }
 
         const currentNetSubtotal = grossSubtotal - currentDiscountTotal;
-        const currentItbis = includeITBIS ? currentNetSubtotal * ITBIS_RATE : 0;
+        currentItbis = includeITBIS ? currentTaxableSubtotal * (taxSettings.find(t => t.id === 'itbis')?.rate || ITBIS_RATE) : 0; // Use ITBIS rate from settings or fallback
         const currentTotal = currentNetSubtotal + currentItbis;
 
         return {
@@ -178,18 +217,34 @@ export default function EditInvoicePage() {
             itbis: currentItbis,
             total: currentTotal
         };
-    }, [items, products, includeITBIS, useCostPrice]);
+    }, [items, products, includeITBIS, useCostPrice, taxSettings]);
 
 
-    const handleAddItem = () => setItems([...items, { id: Date.now(), productId: '', quantity: 1, discount: 0, numberOfPeople: 1 }]);
+    const handleAddItem = () => setItems([...items, {
+        id: Date.now(),
+        productId: '',
+        quantity: 1,
+        discount: 0,
+        numberOfPeople: 1,
+        taxType: taxSettings.find(t => t.isDefault)?.id || 'exempt',
+        goodServiceIndicator: '1'
+    }]);
     const handleRemoveItem = (id: number) => setItems(items.filter((item) => item.id !== id));
 
-    const handleItemChange = (id: number, field: 'productId' | 'quantity' | 'discount' | 'numberOfPeople', value: string) => {
+    const handleItemChange = (id: number, field: 'productId' | 'quantity' | 'discount' | 'numberOfPeople' | 'taxType' | 'goodServiceIndicator', value: string) => {
         setItems(items.map(item => {
             if (item.id !== id) return item;
 
             if (field === 'productId') {
-                return { ...item, productId: value, quantity: 1, numberOfPeople: 1 };
+                const product = products.find(p => p.id === value);
+                return {
+                    ...item,
+                    productId: value,
+                    quantity: 1,
+                    numberOfPeople: 1,
+                    taxType: product?.taxType || taxSettings.find(t => t.isDefault)?.id || 'exempt',
+                    goodServiceIndicator: item.goodServiceIndicator || (product?.productType === 'service' ? '2' : '1')
+                };
             }
 
             if (field === 'discount') {
@@ -207,26 +262,6 @@ export default function EditInvoicePage() {
                     return { ...item, quantity: 1 };
                 }
 
-                const product = products.find(p => p.id === item.productId);
-                if (!product) return { ...item, quantity: newQuantity };
-
-                const originalItem = invoice?.items.find(i => i.productId === item.productId);
-                const originalQuantity = originalItem ? originalItem.quantity : 0;
-
-                const quantityInOtherLines = items
-                    .filter(i => i.id !== id && i.productId === item.productId)
-                    .reduce((sum, i) => sum + i.quantity, 0);
-
-                const availableStock = getProductStock(product) + originalQuantity - quantityInOtherLines;
-
-                if (newQuantity > availableStock) {
-                    toast({
-                        title: "Stock insuficiente",
-                        description: `Solo hay ${availableStock} unidades disponibles de ${product.name} (considerando otras líneas y stock original).`,
-                        variant: "destructive",
-                    });
-                    return { ...item, quantity: Math.max(1, availableStock) };
-                }
                 return { ...item, quantity: newQuantity };
             }
 
@@ -236,6 +271,14 @@ export default function EditInvoicePage() {
                     return { ...item, numberOfPeople: 1 };
                 }
                 return { ...item, numberOfPeople: numPeople };
+            }
+
+            if (field === 'taxType') {
+                return { ...item, taxType: value };
+            }
+
+            if (field === 'goodServiceIndicator') {
+                return { ...item, goodServiceIndicator: value as '1' | '2' };
             }
 
             return item;
@@ -258,9 +301,8 @@ export default function EditInvoicePage() {
         for (const item of items) {
             if (!item.productId || item.quantity <= 0) continue;
 
-            const key = (item.discount === 0 || !item.discount)
-                ? item.productId
-                : `${item.productId}-${item.id}`;
+            // Key for consolidation now includes taxType and goodServiceIndicator
+            const key = `${item.productId}-${item.discount}-${item.taxType}-${item.goodServiceIndicator}`;
 
             const existing = consolidatedItemsMap.get(key);
             if (existing) {
@@ -281,27 +323,7 @@ export default function EditInvoicePage() {
             }
         }
 
-        for (const [productId, totalQuantity] of productQuantities.entries()) {
-            const product = products.find(p => p.id === productId);
-            if (!product) {
-                toast({ title: "Error", description: `Un producto seleccionado ya no es válido.`, variant: "destructive" });
-                setIsSaving(false);
-                return;
-            }
 
-            const originalItemQuantity = invoice?.items.find(i => i.productId === productId)?.quantity || 0;
-            const totalAvailable = getProductStock(product) + originalItemQuantity;
-
-            if (totalQuantity > (getProductStock(product) + originalItemQuantity)) {
-                toast({
-                    title: "Stock Insuficiente",
-                    description: `La cantidad total para "${product.name}" (${totalQuantity}) excede el stock disponible de ${totalAvailable} unidades.`,
-                    variant: "destructive"
-                });
-                setIsSaving(false);
-                return;
-            }
-        }
 
 
         const invoiceItems: InvoiceItem[] = finalItemsState.map(item => {
@@ -310,28 +332,47 @@ export default function EditInvoicePage() {
             const discountAmount = unitPrice * ((item.discount || 0) / 100);
 
             const newItem: InvoiceItem = {
-                productId: product?.id || '', // Added null check
-                productName: product?.name || 'Producto Desconocido', // Added null check
+                productId: product?.id || '',
+                productName: product?.name || 'Producto Desconocido',
                 quantity: item.quantity,
-                unitPrice: unitPrice, // Use the calculated unitPrice
+                unitPrice: unitPrice,
                 discount: item.discount || 0,
                 finalPrice: unitPrice - discountAmount,
+                taxType: item.taxType,
+                isTaxExempt: item.taxType === 'exempt',
+                goodServiceIndicator: item.goodServiceIndicator,
             };
 
             if (isRestockTrackingEnabled) {
                 newItem.numberOfPeople = item.numberOfPeople || 1;
             }
 
-            if (product?.cost !== undefined) { // Added null check
+            if (product?.cost !== undefined) {
                 newItem.unitCost = product.cost;
             }
             return newItem;
         });
 
-        const newSubtotal = invoiceItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
-        const newDiscountTotal = invoiceItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity * ((item.discount || 0) / 100)), 0);
+        let newSubtotal = 0;
+        let newDiscountTotal = 0;
+        let newTaxableSubtotal = 0;
+
+        for (const item of invoiceItems) {
+            const itemGrossTotal = item.unitPrice * item.quantity;
+            newSubtotal += itemGrossTotal;
+
+            const itemDiscountAmount = itemGrossTotal * ((item.discount || 0) / 100);
+            newDiscountTotal += itemDiscountAmount;
+
+            const itemNetTotal = itemGrossTotal - itemDiscountAmount;
+
+            if (includeITBIS && item.taxType !== 'exempt') {
+                newTaxableSubtotal += itemNetTotal;
+            }
+        }
+
         const newNetSubtotal = newSubtotal - newDiscountTotal;
-        const newItbis = includeITBIS ? newNetSubtotal * ITBIS_RATE : 0;
+        const newItbis = includeITBIS ? newTaxableSubtotal * (taxSettings.find(t => t.id === 'itbis')?.rate || ITBIS_RATE) : 0;
         const newTotal = newNetSubtotal + newItbis;
 
         const updatedInvoiceData = {
@@ -351,18 +392,52 @@ export default function EditInvoicePage() {
         };
 
         try {
-            await invoiceApi.update(id, updatedInvoiceData);
+            await invoiceApi.update(id, updatedInvoiceData, false);
             toast({
                 title: "Factura actualizada",
                 description: "La factura se ha actualizado exitosamente.",
             });
             router.push(`/dashboard/invoices/${id}`);
         } catch (e: any) {
-            toast({ title: "Error al actualizar la factura", description: e.message, variant: "destructive" });
+            console.error(e);
+            if ((e.code === 'failed-precondition' || e.message?.includes('Stock insuficiente'))) {
+                setPendingInvoice(updatedInvoiceData);
+                setShowBackorderAlert(true);
+            } else {
+                let errorMessage = e.message;
+                if (e.details && Array.isArray(e.details)) {
+                    errorMessage = e.details.map((err: any) => `${err.path.join('.')}: ${err.message}`).join(', ');
+                }
+                toast({ title: "Error al actualizar la factura", description: errorMessage, variant: "destructive" });
+            }
         } finally {
             setIsSaving(false);
         }
     };
+
+    const handleConfirmBackorder = async () => {
+        if (!pendingInvoice) return;
+        setIsSaving(true);
+        try {
+            await invoiceApi.update(id, pendingInvoice, true);
+            toast({
+                title: "Factura Actualizada (Venta Anticipada)",
+                description: "La factura se actualizó con stock negativo.",
+            });
+            setShowBackorderAlert(false);
+            router.push(`/dashboard/invoices/${id}`);
+        } catch (e: any) {
+            console.error(e);
+            let errorMessage = e.message;
+            if (e.details && Array.isArray(e.details)) {
+                errorMessage = e.details.map((err: any) => `${err.path.join('.')}: ${err.message}`).join(', ');
+            }
+            toast({ title: "Error", description: errorMessage, variant: "destructive" });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
 
     if (loading) {
         return (
@@ -405,6 +480,8 @@ export default function EditInvoicePage() {
                                             <TableHead className="w-[120px]">Cantidad</TableHead>
                                             {isRestockTrackingEnabled && <TableHead className="w-[120px]">Personas</TableHead>}
                                             <TableHead className="w-[120px]">Desc. (%)</TableHead>
+                                            <TableHead className="w-[120px]">Impuesto</TableHead>
+                                            <TableHead className="w-[120px]">Tipo Bien/Serv.</TableHead>
                                             <TableHead className="w-[150px] text-right">Precio Unit.</TableHead>
                                             <TableHead className="w-[150px] text-right">Total</TableHead>
                                             <TableHead className="w-[50px]"></TableHead>
@@ -428,9 +505,8 @@ export default function EditInvoicePage() {
                                                             <SelectTrigger><SelectValue placeholder="Seleccionar producto..." /></SelectTrigger>
                                                             <SelectContent>
                                                                 {availableProducts
-                                                                    .filter(p => (getProductStock(p) + (p.id === item.productId ? originalQuantity : 0)) > 0 || p.id === item.productId)
                                                                     .map((p) => (
-                                                                        <SelectItem key={p.id} value={p.id} disabled={(getProductStock(p) + (p.id === item.productId ? originalQuantity : 0)) <= 0 && p.id !== item.productId}>
+                                                                        <SelectItem key={p.id} value={p.id}>
                                                                             {p.name} ({getProductStock(p) + (p.id === item.productId ? originalQuantity : 0)} en stock)
                                                                         </SelectItem>
                                                                     ))
@@ -438,7 +514,15 @@ export default function EditInvoicePage() {
                                                             </SelectContent>
                                                         </Select>
                                                     </TableCell>
-                                                    <TableCell><Input type="number" min="1" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} /></TableCell>
+                                                    <TableCell>
+                                                        <Input
+                                                            type="number"
+                                                            min="1"
+                                                            value={item.quantity}
+                                                            onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)}
+                                                            className="h-8 w-20 text-center mx-auto [&::-webkit-inner-spin-button]:appearance-none"
+                                                        />
+                                                    </TableCell>
                                                     {isRestockTrackingEnabled && (
                                                         <TableCell>
                                                             <Input
@@ -514,9 +598,10 @@ export default function EditInvoicePage() {
                                             <Label htmlFor="client">Cliente</Label>
                                             <ClientSelector
                                                 clients={clients}
+                                                clientTypes={clientTypes}
                                                 selectedClientId={selectedClientId}
                                                 onSelectClient={setSelectedClientId}
-                                                disabled={hasPayments}
+                                                disabled={!userId}
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -580,6 +665,22 @@ export default function EditInvoicePage() {
                     </Card>
                 </div>
             </div>
+            <AlertDialog open={showBackorderAlert} onOpenChange={setShowBackorderAlert}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Stock Insuficiente</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Algunos productos no tienen stock suficiente. ¿Deseas proceder con una <strong>Venta Anticipada</strong>?
+                            <br /><br />
+                            Esto creará un stock negativo que aparecerá en tu <strong>Lista de Compras</strong> como prioritario.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmBackorder}>Confirmar Venta Anticipada</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }

@@ -38,6 +38,7 @@ export interface Category {
 export interface Client {
   id: string;
   name: string;
+  companyName?: string; // Razon Social
   phone: string;
   birthday: string;
   email: string;
@@ -87,7 +88,8 @@ export interface Product {
   description: string;
   currency: 'DOP' | 'USD';
   category: string;
-  productType?: 'good' | 'service'; // Default 'good'
+  productType: 'good' | 'service'; // 'good' = inventory tracked, 'service' = non-inventory
+  allowNegativeStock?: boolean; // If true, allows selling even if stock is 0 (for goods)
   taxType?: string; // Default tax code (e.g., '1' for 18%)
   batches: ProductBatch[];
   // Computed properties from first batch for backward compatibility
@@ -148,7 +150,8 @@ export interface Invoice {
   id: string;
   invoiceNumber: string;
   clientId: string;
-  clientName: string;
+  clientName: string; // Contact Name or Razon Social if no contact name
+  clientCompanyName?: string; // Explicit Razon Social
   clientRnc?: string;
   clientEmail: string;
   clientAddress?: string;

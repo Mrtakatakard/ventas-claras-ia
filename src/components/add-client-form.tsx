@@ -26,7 +26,8 @@ const addressSchema = z.object({
 });
 
 const formSchema = z.object({
-  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres."),
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres."), // Contact Person
+  companyName: z.string().optional(), // Razon Social
   email: z.string().email("Si se ingresa un correo, debe ser válido.").or(z.string().length(0)).optional(),
   phone: z.string().min(10, "El teléfono debe tener al menos 10 caracteres."),
   rnc: z.string().optional(),
@@ -55,6 +56,7 @@ export function AddClientForm({ onSuccess, client, clientTypes }: AddClientFormP
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: client?.name || "",
+      companyName: client?.companyName || "",
       email: client?.email || "",
       phone: client?.phone || "",
       rnc: client?.rnc || "",
@@ -106,6 +108,7 @@ export function AddClientForm({ onSuccess, client, clientTypes }: AddClientFormP
           birthday: values.birthday || '',
           clientTypeId: values.clientTypeId,
           clientTypeName: selectedClientType.name,
+          companyName: values.companyName || undefined,
           addresses: finalAddresses,
         };
         await clientApi.update(client.id, updatedData);
@@ -116,6 +119,7 @@ export function AddClientForm({ onSuccess, client, clientTypes }: AddClientFormP
       } else {
         const newClient: Omit<Client, 'id' | 'isActive'> = {
           name: values.name,
+          companyName: values.companyName || undefined,
           email: values.email || '',
           phone: values.phone,
           rnc: values.rnc || undefined,
@@ -159,7 +163,10 @@ export function AddClientForm({ onSuccess, client, clientTypes }: AddClientFormP
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
           <FormField control={form.control} name="name" render={({ field }) => (
-            <FormItem className="md:col-span-2"><FormLabel>Nombre Completo</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
+            <FormItem className="md:col-span-2"><FormLabel>Nombre de Contacto</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="companyName" render={({ field }) => (
+            <FormItem className="md:col-span-2"><FormLabel>Razón Social (Empresa)</FormLabel><FormControl><Input placeholder="Mi Empresa S.R.L" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
           )} />
           <FormField control={form.control} name="email" render={({ field }) => (
             <FormItem><FormLabel>Correo Electrónico (Opcional)</FormLabel><FormControl><Input placeholder="nombre@ejemplo.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
@@ -168,7 +175,16 @@ export function AddClientForm({ onSuccess, client, clientTypes }: AddClientFormP
             <FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input placeholder="809-123-4567" {...field} /></FormControl><FormMessage /></FormItem>
           )} />
           <FormField control={form.control} name="rnc" render={({ field }) => (
-            <FormItem><FormLabel>RNC / Cédula (Opcional)</FormLabel><FormControl><Input placeholder="001-0000000-0" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+            <FormItem>
+              <FormLabel>RNC / Cédula (Opcional)</FormLabel>
+              <FormControl>
+                <Input placeholder="001-0000000-0" {...field} value={field.value ?? ''} />
+              </FormControl>
+              <FormDescription>
+                Ingrese el RNC o Cédula manualmente.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
           )} />
           <FormField control={form.control} name="birthday" render={({ field }) => (
             <FormItem><FormLabel>Cumpleaños (Opcional)</FormLabel><FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>

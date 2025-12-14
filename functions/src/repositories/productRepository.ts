@@ -31,4 +31,20 @@ export const productRepository = {
             .get();
         return snapshot.docs.map((doc) => doc.data() as Product);
     },
+
+    async searchByName(term: string, userId: string): Promise<Product[]> {
+        // Simple case-sensitive prefix search as Firestore doesn't support full-text natively
+        // For production, consider Algolia or TypeSense
+        const endTerm = term.replace(/.$/, c => String.fromCharCode(c.charCodeAt(0) + 1));
+
+        const snapshot = await db.collection(COLLECTION_NAME)
+            .where('userId', '==', userId)
+            .where('isActive', '==', true)
+            .where('name', '>=', term)
+            .where('name', '<', endTerm)
+            .limit(10)
+            .get();
+
+        return snapshot.docs.map((doc) => doc.data() as Product);
+    },
 };

@@ -49,9 +49,9 @@ export const productBatchSchema = z.object({
 export const createInvoiceSchema = z.object({
     clientId: z.string().min(1, 'Client ID is required'),
     clientName: z.string().min(1, 'Client Name is required'),
-    clientRnc: z.string().optional(),
-    clientEmail: z.string().email('Invalid client email'),
-    clientAddress: z.string().optional(),
+    clientRnc: z.string().nullish().or(z.literal('')),
+    clientEmail: z.string().email().nullish().or(z.literal('')),
+    clientAddress: z.string().nullish().or(z.literal('')),
     issueDate: z.string(),
     dueDate: z.string(),
     items: z.array(invoiceItemSchema).min(1, 'At least one item is required'),

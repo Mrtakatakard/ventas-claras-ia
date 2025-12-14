@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type ProductWithCalculations = Product & { totalStock: number; nextExpiration?: string; };
 type SortKey = keyof ProductWithCalculations;
@@ -55,6 +56,7 @@ function ProductsContent() {
   const [importedData, setImportedData] = useState<any[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [filter, setFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'good' | 'service'>('all');
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -243,11 +245,15 @@ function ProductsContent() {
       };
     });
 
-    let sortableItems = [...productsWithCalculations].filter(product =>
-      product.name.toLowerCase().includes(filter.toLowerCase()) ||
-      product.code.toLowerCase().includes(filter.toLowerCase()) ||
-      (product.category && product.category.toLowerCase().includes(filter.toLowerCase()))
-    );
+    let sortableItems = [...productsWithCalculations].filter(product => {
+      const matchesSearch = product.name.toLowerCase().includes(filter.toLowerCase()) ||
+        product.code.toLowerCase().includes(filter.toLowerCase()) ||
+        (product.category && product.category.toLowerCase().includes(filter.toLowerCase()));
+
+      const matchesType = typeFilter === 'all' || (product.productType || 'good') === typeFilter;
+
+      return matchesSearch && matchesType;
+    });
 
     sortableItems.sort((a, b) => {
       const aValue = a[sortConfig.key];
@@ -304,7 +310,7 @@ function ProductsContent() {
               Agregar Producto
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingProduct ? 'Editar Producto' : 'Agregar Nuevo Producto'}</DialogTitle>
               <DialogDescription>{editingProduct ? 'Modifica los datos del producto.' : 'Completa los datos para registrar un nuevo producto.'}</DialogDescription>
@@ -338,6 +344,14 @@ function ProductsContent() {
 
       <Card>
         <CardContent className="pt-6">
+          <Tabs defaultValue="all" onValueChange={(v) => console.log(v)} value={typeFilter} className="w-full mb-4">
+            <TabsList>
+              <TabsTrigger value="all" onClick={() => setTypeFilter('all')}>Todos</TabsTrigger>
+              <TabsTrigger value="good" onClick={() => setTypeFilter('good')}>Inventario (Físico)</TabsTrigger>
+              <TabsTrigger value="service" onClick={() => setTypeFilter('service')}>Servicios</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           <div className="flex items-center justify-between gap-4 mb-4">
             <div className="relative w-full max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -410,6 +424,7 @@ function ProductsContent() {
                 ) : paginatedProducts.length > 0 ? (
                   paginatedProducts.map((product) => {
                     const firstBatch = product.batches?.[0];
+                    const isService = product.productType === 'service';
                     return (
                       <TableRow key={product.id}>
                         <TableCell className="w-[50px]">
@@ -421,13 +436,17 @@ function ProductsContent() {
                         <TableCell className="font-mono hidden md:table-cell">{product.code}</TableCell>
                         <TableCell className="font-medium">{product.name}</TableCell>
                         <TableCell>
-                          <Badge variant={getStockBadgeVariant(product.totalStock)} className="text-sm">
-                            {product.totalStock > 0 ? product.totalStock : "Agotado"}
-                          </Badge>
+                          {isService ? (
+                            <Badge variant="outline" className="text-xs">Servicio</Badge>
+                          ) : (
+                            <Badge variant={getStockBadgeVariant(product.totalStock)} className="text-sm">
+                              {product.totalStock > 0 ? product.totalStock : (product.allowNegativeStock ? "0 (Venta Ant.)" : "Agotado")}
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">{product.category}</TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          {firstBatch ? formatCurrency(firstBatch.price, product.currency) : "N/A"}
+                          {isService ? formatCurrency(product.price || 0, product.currency) : (firstBatch ? formatCurrency(firstBatch.price, product.currency) : "N/A")}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">{product.nextExpiration || 'N/A'}</TableCell>
                         <TableCell className="text-right">

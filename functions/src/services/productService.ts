@@ -94,11 +94,20 @@ export const productService = {
                 userId,
                 createdAt: new Date(),
                 isActive: true,
+                // Default new fields safely
+                stock: productData.stock || 0,
+                minStock: productData.minStock || 0,
+                cost: productData.cost || 0,
+                price: productData.price || 0,
             };
             const prodRef = db.collection('products').doc(prodId);
             batch.set(prodRef, newProduct);
         }
 
         await batch.commit();
+    },
+
+    async searchProducts(term: string, userId: string): Promise<Product[]> {
+        return productRepository.searchByName(term, userId);
     },
 };

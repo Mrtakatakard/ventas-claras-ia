@@ -260,7 +260,7 @@ function ClientsContent() {
               Agregar Cliente
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingClient ? 'Editar Cliente' : 'Agregar Nuevo Cliente'}</DialogTitle>
               <DialogDescription>

@@ -20,6 +20,8 @@ exports.invoiceItemSchema = zod_1.z.object({
     numberOfPeople: zod_1.z.number().optional(),
     followUpStatus: zod_1.z.enum(['realizado', 'pendiente']).optional(),
     isTaxExempt: zod_1.z.boolean().optional(),
+    taxType: zod_1.z.string().optional(),
+    goodServiceIndicator: zod_1.z.enum(['1', '2']).optional(),
 });
 exports.paymentSchema = zod_1.z.object({
     id: zod_1.z.string(),
@@ -44,8 +46,9 @@ exports.productBatchSchema = zod_1.z.object({
 exports.createInvoiceSchema = zod_1.z.object({
     clientId: zod_1.z.string().min(1, 'Client ID is required'),
     clientName: zod_1.z.string().min(1, 'Client Name is required'),
-    clientEmail: zod_1.z.string().email('Invalid client email'),
-    clientAddress: zod_1.z.string().optional(),
+    clientRnc: zod_1.z.string().nullish().or(zod_1.z.literal('')),
+    clientEmail: zod_1.z.string().email().nullish().or(zod_1.z.literal('')),
+    clientAddress: zod_1.z.string().nullish().or(zod_1.z.literal('')),
     issueDate: zod_1.z.string(),
     dueDate: zod_1.z.string(),
     items: zod_1.z.array(exports.invoiceItemSchema).min(1, 'At least one item is required'),

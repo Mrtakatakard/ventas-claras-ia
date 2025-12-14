@@ -90,6 +90,13 @@ export interface Product {
     userId: string;
     createdAt: Date;
     isActive: boolean;
+    // Hybrid / Simple Fields
+    productType?: 'good' | 'service';
+    allowNegativeStock?: boolean;
+    stock?: number; // Cached total or simple stock
+    minStock?: number;
+    price?: number; // Base price
+    cost?: number; // Base cost
 }
 
 export interface InvoiceItem {
@@ -110,8 +117,8 @@ export interface Quote {
     quoteNumber: string;
     clientId: string;
     clientName: string;
-    clientEmail: string;
-    clientAddress?: string;
+    clientEmail?: string | null;
+    clientAddress?: string | null;
     issueDate: string;
     dueDate: string; // Expiration date
     items: InvoiceItem[];
@@ -134,8 +141,9 @@ export interface Invoice {
     invoiceNumber: string;
     clientId: string;
     clientName: string;
-    clientEmail: string;
-    clientAddress?: string;
+    clientRnc?: string | null;
+    clientEmail?: string | null;
+    clientAddress?: string | null;
     issueDate: string;
     dueDate: string;
     items: InvoiceItem[];

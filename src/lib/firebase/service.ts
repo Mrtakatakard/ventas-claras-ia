@@ -208,6 +208,7 @@ export const addProduct = async (productData: Omit<Partial<Product>, 'id' | 'cre
     name: data.name,
     category: data.category,
     currency: data.currency,
+    productType: data.productType || 'good',
     batches: data.batches,
     // Computed fields from first batch
     price: data.batches?.[0]?.price || 0,

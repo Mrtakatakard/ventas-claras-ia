@@ -22,5 +22,16 @@ exports.ClientRepository = {
         // Soft delete
         await firebase_1.db.collection('clients').doc(id).update({ isActive: false });
     },
+    async findByPhone(phone, userId) {
+        const snapshot = await firebase_1.db.collection('clients')
+            .where('userId', '==', userId)
+            .where('phone', '==', phone)
+            .where('isActive', '==', true)
+            .limit(1)
+            .get();
+        if (snapshot.empty)
+            return null;
+        return snapshot.docs[0].data();
+    },
 };
 //# sourceMappingURL=clientRepository.js.map

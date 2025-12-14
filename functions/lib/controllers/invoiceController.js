@@ -24,14 +24,15 @@ exports.invoices = (0, https_1.onCall)({ cors: true, maxInstances: 1, cpu: 0.5 }
     try {
         switch (action) {
             case 'create': {
-                const validatedData = schema_1.createInvoiceSchema.parse(data);
-                return await invoiceService.createInvoice(validatedData, userId);
+                const { allowBackorder } = data, invoiceData = __rest(data, ["allowBackorder"]);
+                const validatedData = schema_1.createInvoiceSchema.parse(invoiceData);
+                return await invoiceService.createInvoice(validatedData, userId, allowBackorder);
             }
             case 'update': {
-                const { id } = data, updateData = __rest(data, ["id"]);
+                const { id, allowBackorder } = data, updateData = __rest(data, ["id", "allowBackorder"]);
                 const validatedData = schema_1.updateInvoiceSchema.parse(Object.assign({ id }, updateData));
                 const { id: _id } = validatedData, cleanData = __rest(validatedData, ["id"]);
-                return await invoiceService.updateInvoice(id, cleanData, userId);
+                return await invoiceService.updateInvoice(id, cleanData, userId, allowBackorder);
             }
             case 'delete':
                 return await invoiceService.deleteInvoice(data.id, userId);

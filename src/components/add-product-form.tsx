@@ -35,14 +35,16 @@ const formSchema = z.object({
   category: z.string({ required_error: "Por favor selecciona una categoría." }).min(1, "Por favor selecciona una categoría."),
   currency: z.enum(['DOP', 'USD'], { required_error: "Por favor selecciona una moneda." }),
   productType: z.enum(['good', 'service']).default('good'),
+  allowNegativeStock: z.boolean().default(false).optional(),
   taxType: z.string().default('1'), // '1' = 18%, '3' = Exempt
   description: z.string().optional(),
   notificationThreshold: z.coerce.number().int().nonnegative("El umbral debe ser un número entero no negativo.").optional(),
   restockTimeDays: z.coerce.number().int().nonnegative("El tiempo de reposición debe ser un número entero no negativo.").optional().nullable(),
   isTaxExempt: z.boolean().default(false).optional(),
   image: z.any().optional(),
-  batches: z.array(batchSchema).optional(), // Optional now because services don't need it
-  // But we still validate it manually if it's a good
+  batches: z.array(batchSchema).optional(),
+  servicePrice: z.coerce.number().nonnegative().optional(),
+  serviceCost: z.coerce.number().nonnegative().optional(),
 });
 
 interface AddProductFormProps {
@@ -66,6 +68,7 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
       category: product?.category || "",
       currency: product?.currency || 'DOP',
       productType: product?.productType || 'good',
+      allowNegativeStock: product?.allowNegativeStock || false,
       taxType: product?.taxType || '1',
       description: product?.description || "",
       notificationThreshold: product?.notificationThreshold ?? 10,
@@ -73,6 +76,8 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
       isTaxExempt: product?.isTaxExempt || false,
       image: product?.imageUrl || undefined,
       batches: product?.batches || [],
+      servicePrice: product?.price || 0,
+      serviceCost: product?.cost || 0,
     },
   });
 
@@ -154,9 +159,9 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
       imageUrl: imageUrl,
       restockTimeDays: values.restockTimeDays === undefined ? null : values.restockTimeDays,
       userId: userId,
-      price: isService ? 0 : (batchesWithIds[0]?.price || 0), // Services don't manage price here for now, or maybe they should have a base price? Assuming 0/variable
-      cost: isService ? 0 : batchesWithIds[0]?.cost,
-      stock: isService ? 0 : batchesWithIds.reduce((sum: number, batch: any) => sum + batch.stock, 0),
+      price: isService ? (values.servicePrice || 0) : (batchesWithIds[0]?.price || 0),
+      cost: isService ? (values.serviceCost || 0) : batchesWithIds[0]?.cost,
+      stock: isService ? 0 : batchesWithIds.reduce((sum: number, batch: any) => sum + (Number(batch.stock) || 0), 0),
     };
 
     try {
@@ -213,6 +218,8 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
               <FormDescription>Los servicios no manejan inventario.</FormDescription>
             </FormItem>
           )} />
+
+
 
           <FormField control={form.control} name="taxType" render={({ field }) => (
             <FormItem className="flex-1">
@@ -304,8 +311,22 @@ export function AddProductForm({ onSuccess, product, categories }: AddProductFor
             ))}
             <FormMessage>{form.formState.errors.batches?.message}</FormMessage>
           </div>
+
         )}
 
+        {isService && (
+          <div className="space-y-4 rounded-lg border p-4 bg-muted/10">
+            <FormLabel>Detalles del Servicio</FormLabel>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField control={form.control} name="servicePrice" render={({ field }) => (
+                <FormItem><FormLabel>Precio de Venta</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 && !isEditing ? '' : field.value} onChange={e => field.onChange(e.target.value === '' ? '' : +e.target.value)} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={form.control} name="serviceCost" render={({ field }) => (
+                <FormItem><FormLabel>Costo Estimado (Opcional)</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value === 0 && !isEditing ? '' : field.value} onChange={e => field.onChange(e.target.value === '' ? '' : +e.target.value)} /></FormControl><FormDescription>Costo de mano de obra/horas.</FormDescription><FormMessage /></FormItem>
+              )} />
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField control={form.control} name="restockTimeDays" render={({ field }) => (

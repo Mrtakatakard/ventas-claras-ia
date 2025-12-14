@@ -19,6 +19,7 @@ import {
   X,
   ArrowUp,
   Crown,
+  ShoppingCart,
 } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { usePathname, useRouter } from "next/navigation"
@@ -57,11 +58,13 @@ import { getProducts, getInvoices } from "@/lib/firebase/service"
 import type { Product } from "@/lib/types"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Breadcrumb } from "@/components/breadcrumb"
+import { hasAccess } from "@/lib/features";
 
 const userNavItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Panel de Control" },
   { href: "/dashboard/clients", icon: Users, label: "Clientes" },
   { href: "/dashboard/products", icon: Package, label: "Productos" },
+  { href: "/dashboard/replenishment", icon: ShoppingCart, label: "Lista de Compras" },
   { href: "/dashboard/quotes", icon: FilePenLine, label: "Cotizaciones" },
   { href: "/dashboard/invoices", icon: FileText, label: "Facturas" },
   { href: "/dashboard/accounts-receivable", icon: BookUser, label: "Cuentas por Cobrar" },
@@ -97,7 +100,14 @@ export default function DashboardLayout({
 
   // Determine which navigation items to show
   // If user is an admin, the view can be toggled. Otherwise, it's always user view.
-  const navItems = isActualAdmin && viewAsAdmin ? adminNavItems : userNavItems;
+  const rawNavItems = isActualAdmin && viewAsAdmin ? adminNavItems : userNavItems;
+
+  const navItems = rawNavItems.filter(item => {
+    if (item.href === '/dashboard/replenishment') {
+      return hasAccess(planId, 'smartReplenishment');
+    }
+    return true;
+  });
 
   useEffect(() => {
     if (!loading && !user) {

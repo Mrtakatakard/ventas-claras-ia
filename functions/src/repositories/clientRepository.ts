@@ -26,4 +26,16 @@ export const ClientRepository = {
         // Soft delete
         await db.collection('clients').doc(id).update({ isActive: false });
     },
+
+    async findByPhone(phone: string, userId: string): Promise<Client | null> {
+        const snapshot = await db.collection('clients')
+            .where('userId', '==', userId)
+            .where('phone', '==', phone)
+            .where('isActive', '==', true)
+            .limit(1)
+            .get();
+
+        if (snapshot.empty) return null;
+        return snapshot.docs[0].data() as Client;
+    },
 };

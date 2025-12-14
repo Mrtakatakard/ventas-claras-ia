@@ -395,7 +395,12 @@ export default function EditInvoicePage() {
             });
             router.push(`/dashboard/invoices/${id}`);
         } catch (e: any) {
-            toast({ title: "Error al actualizar la factura", description: e.message, variant: "destructive" });
+            console.error(e);
+            let errorMessage = e.message;
+            if (e.details && Array.isArray(e.details)) {
+                errorMessage = e.details.map((err: any) => `${err.path.join('.')}: ${err.message}`).join(', ');
+            }
+            toast({ title: "Error al actualizar la factura", description: errorMessage, variant: "destructive" });
         } finally {
             setIsSaving(false);
         }
@@ -571,6 +576,7 @@ export default function EditInvoicePage() {
                                             <Label htmlFor="client">Cliente</Label>
                                             <ClientSelector
                                                 clients={clients}
+                                                clientTypes={clientTypes}
                                                 selectedClientId={selectedClientId}
                                                 onSelectClient={setSelectedClientId}
                                                 disabled={hasPayments}

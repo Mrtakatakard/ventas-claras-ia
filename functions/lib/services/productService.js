@@ -73,11 +73,16 @@ exports.productService = {
             }
             // Handle Product
             const prodId = firebase_1.db.collection('products').doc().id;
-            const newProduct = Object.assign(Object.assign({}, productData), { id: prodId, userId, createdAt: new Date(), isActive: true });
+            const newProduct = Object.assign(Object.assign({}, productData), { id: prodId, userId, createdAt: new Date(), isActive: true, 
+                // Default new fields safely
+                stock: productData.stock || 0, minStock: productData.minStock || 0, cost: productData.cost || 0, price: productData.price || 0 });
             const prodRef = firebase_1.db.collection('products').doc(prodId);
             batch.set(prodRef, newProduct);
         }
         await batch.commit();
+    },
+    async searchProducts(term, userId) {
+        return productRepository_1.productRepository.searchByName(term, userId);
     },
 };
 //# sourceMappingURL=productService.js.map

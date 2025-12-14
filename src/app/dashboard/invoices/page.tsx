@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { PageHeader } from "@/components/page-header"
-import { MoreHorizontal, PlusCircle, Trash2, Eye, Search, ChevronsUpDown, ArrowUp, ArrowDown, Edit, ArrowLeft, ArrowRight, ChevronsLeft, ChevronsRight, CreditCard } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Trash2, Eye, Search, ChevronsUpDown, ArrowUp, ArrowDown, Edit, ArrowLeft, ArrowRight, ChevronsLeft, ChevronsRight, CreditCard, MessageCircle } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/firebase/hooks";
 import { getInvoices } from "@/lib/firebase/service";
@@ -28,6 +28,7 @@ import {
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { AddPaymentForm } from "@/components/add-payment-form"
+import { WhatsAppMessageModal } from "@/components/whatsapp-message-modal";
 
 type SortKey = keyof Invoice;
 
@@ -42,6 +43,8 @@ export default function InvoicesPage() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
+  const [whatsAppInvoice, setWhatsAppInvoice] = useState<Invoice | null>(null);
 
   const fetchInvoices = async () => {
     if (!userId) return;
@@ -276,6 +279,12 @@ export default function InvoicesPage() {
                             <DropdownMenuItem onClick={() => handleOpenPaymentDialog(invoice)} disabled={invoice.balanceDue <= 0}>
                               <CreditCard className="mr-2 h-4 w-4" />Realizar Pago
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setWhatsAppInvoice(invoice);
+                              setIsWhatsAppOpen(true);
+                            }} disabled={invoice.status === 'pagada'}>
+                              <MessageCircle className="mr-2 h-4 w-4" />Cobrar por WhatsApp
+                            </DropdownMenuItem>
                             <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(invoice.id)}>
                               <Trash2 className="mr-2 h-4 w-4" />
                               Eliminar
@@ -387,6 +396,24 @@ export default function InvoicesPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {whatsAppInvoice && (
+        <WhatsAppMessageModal
+          open={isWhatsAppOpen}
+          onOpenChange={(open) => {
+            setIsWhatsAppOpen(open);
+            if (!open) setWhatsAppInvoice(null);
+          }}
+          type="payment"
+          context={{
+            clientName: whatsAppInvoice.clientName || 'Cliente',
+            clientPhone: "18295555555", // Placeholder as discussed
+            amount: whatsAppInvoice.balanceDue,
+            invoiceNumber: whatsAppInvoice.invoiceNumber,
+            businessName: "Ventas Claras",
+          }}
+        />
+      )}
     </>
   )
 }

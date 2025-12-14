@@ -3,15 +3,15 @@ import { httpsCallable } from "firebase/functions";
 import { Invoice } from "../../../functions/src/types";
 
 export const invoiceApi = {
-    create: async (invoice: Omit<Invoice, 'id' | 'createdAt' | 'isActive'>): Promise<string> => {
+    create: async (invoice: Omit<Invoice, 'id' | 'createdAt' | 'isActive'>, allowBackorder: boolean = false): Promise<string> => {
         const invoicesFn = httpsCallable(functions, 'invoices');
-        const result = await invoicesFn({ action: 'create', data: invoice });
+        const result = await invoicesFn({ action: 'create', data: { ...invoice, allowBackorder } });
         return result.data as string;
     },
 
-    update: async (id: string, data: Partial<Invoice>): Promise<void> => {
+    update: async (id: string, data: Partial<Invoice>, allowBackorder: boolean = false): Promise<void> => {
         const invoicesFn = httpsCallable(functions, 'invoices');
-        await invoicesFn({ action: 'update', data: { id, ...data } });
+        await invoicesFn({ action: 'update', data: { id, ...data, allowBackorder } });
     },
 
     delete: async (id: string): Promise<void> => {
