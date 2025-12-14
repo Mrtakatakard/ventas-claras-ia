@@ -26,11 +26,26 @@ export const scanInvoice = onCall({ maxInstances: 5, memory: '512MiB', cors: tru
         const userSnap = await db.collection('users').doc(uid).get();
         const userData = userSnap.data();
 
-        if (!userData || !userData.organizationId) {
-            throw new HttpsError('failed-precondition', 'No tienes una organización asignada.');
+        let orgId = userData?.organizationId;
+
+        // Fallback: If no linked Org, try to find one owned by this user
+        if (!orgId) {
+            const ownedOrgs = await db.collection('organizations')
+                .where('ownerId', '==', uid)
+                .where('isActive', '==', true)
+                .limit(1)
+                .get();
+
+            if (!ownedOrgs.empty) {
+                orgId = ownedOrgs.docs[0].id;
+                // Self-heal: Link it for next time
+                await db.collection('users').doc(uid).set({ organizationId: orgId }, { merge: true });
+            } else {
+                // If still no org, we can't check credits
+                throw new HttpsError('failed-precondition', 'No tienes una organización asignada para facturar los créditos de IA.');
+            }
         }
 
-        const orgId = userData.organizationId;
         const orgRef = db.collection('organizations').doc(orgId);
 
         // We run the credit check + deduction in a Transaction for safety
@@ -94,10 +109,12 @@ export const scanInvoice = onCall({ maxInstances: 5, memory: '512MiB', cors: tru
         // 4. Run Gemini AI (Now that we paid)
         const genAI = new GoogleGenerativeAI(googleApiKey.value());
 
-        // Use Flash 2.0 (The Ferrari)
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+        // Use Flash 1.5 (Stable & Fast)
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-        // Clean base64 if needed (remove data:image/png;base64, prefix)
+        // Extract mime type and clean base64
+        const mimeMatch = imageBase64.match(/^data:(image\/[a-zA-Z]+);base64,/);
+        const mimeType = mimeMatch ? mimeMatch[1] : "image/png";
         const cleanBase64 = imageBase64.replace(/^data:image\/(png|jpeg|webp);base64,/, "");
 
         const prompt = `
@@ -119,7 +136,7 @@ export const scanInvoice = onCall({ maxInstances: 5, memory: '512MiB', cors: tru
 
         const result = await model.generateContent([
             prompt,
-            { inlineData: { data: cleanBase64, mimeType: "image/png" } }
+            { inlineData: { data: cleanBase64, mimeType: mimeType } }
         ]);
 
         const response = await result.response;
@@ -157,6 +174,7 @@ export const scanInvoice = onCall({ maxInstances: 5, memory: '512MiB', cors: tru
             throw error;
         }
 
-        throw new HttpsError('internal', 'No pudimos leer la factura. Intenta con una foto más clara.');
+        // DEBUG: Return original error to user to see what is happening
+        throw new HttpsError('internal', `Error AI: ${error.message}`);
     }
 });

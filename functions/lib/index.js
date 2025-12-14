@@ -4,7 +4,7 @@
  * This file should only import and export functions from other modules.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.whatsapp = exports.scanInvoice = exports.auth = exports.taxes = exports.ncf = exports.quotes = exports.invoices = exports.products = exports.clients = exports.general = exports.team = void 0;
+exports.whatsapp = exports.scanInvoice = exports.authTriggers = exports.auth = exports.taxes = exports.ncf = exports.quotes = exports.invoices = exports.products = exports.clients = exports.general = exports.team = void 0;
 // import { app, db } from "./config/firebase";
 // export { app, db };
 // Exporting specific functions for better organization
@@ -26,6 +26,7 @@ Object.defineProperty(exports, "ncf", { enumerable: true, get: function () { ret
 var taxController_1 = require("./controllers/taxController");
 Object.defineProperty(exports, "taxes", { enumerable: true, get: function () { return taxController_1.taxes; } });
 exports.auth = require("./controllers/authController");
+exports.authTriggers = require("./triggers/authTriggers");
 var aiController_1 = require("./controllers/aiController");
 Object.defineProperty(exports, "scanInvoice", { enumerable: true, get: function () { return aiController_1.scanInvoice; } });
 exports.whatsapp = require("./controllers/whatsappController");

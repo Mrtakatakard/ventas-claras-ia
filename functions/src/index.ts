@@ -22,5 +22,6 @@ export { quotes } from './controllers/quoteController';
 export { ncf } from './controllers/ncfController';
 export { taxes } from './controllers/taxController';
 export * as auth from './controllers/authController';
+export * as authTriggers from './triggers/authTriggers';
 export { scanInvoice } from './controllers/aiController';
 export * as whatsapp from './controllers/whatsappController';
