@@ -25,6 +25,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { PhoneInputComponent } from '@/components/ui/phone-input';
 
 export default function RegisterPage() {
     const [step, setStep] = useState<'initial' | 'company-details'>('initial');
@@ -97,6 +98,8 @@ export default function RegisterPage() {
         }
     };
 
+    const [phone, setPhone] = useState(''); // New State
+
     const handleCompleteSetup = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!currentUser) return;
@@ -108,6 +111,7 @@ export default function RegisterPage() {
             const result = await createAccountFunction({
                 companyName,
                 industry,
+                phoneNumber: phone, // Pass phone to backend
             });
 
             const data = result.data as { success: boolean; organizationId: string };
@@ -164,6 +168,18 @@ export default function RegisterPage() {
                                     disabled={isSubmitting}
                                     autoFocus
                                 />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="phone">Número de WhatsApp (Importante)</Label>
+                                <PhoneInputComponent
+                                    id="phone"
+                                    placeholder="809-555-0101"
+                                    value={phone}
+                                    onChange={(value: string) => setPhone(value)}
+                                    disabled={isSubmitting}
+                                    defaultCountry="DO"
+                                />
+                                <p className="text-xs text-muted-foreground">Este será tu identificador único para el asistente IA.</p>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="industry">Tipo de Negocio</Label>

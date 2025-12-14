@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/firebase/hooks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NCFSettings } from "@/components/settings/ncf-settings";
 import { TaxSettingsComponent } from "@/components/settings/tax-settings";
+import { UserProfileSettings } from "@/components/settings/user-profile-settings";
 
 export default function SettingsPage() {
   const { loading: authLoading } = useAuth();
@@ -41,6 +42,7 @@ export default function SettingsPage() {
       </Card>
 
       <div className="mt-8 space-y-8">
+        <UserProfileSettings />
         <TaxSettingsComponent />
         <NCFSettings />
       </div>

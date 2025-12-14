@@ -18,6 +18,7 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group"
 import { cn } from "@/lib/utils"
 import React from "react"
 import { logAnalyticsEvent } from "@/lib/firebase/analytics"
+import { PhoneInputComponent } from "@/components/ui/phone-input"
 
 const addressSchema = z.object({
   id: z.string().optional(),
@@ -178,7 +179,17 @@ export function AddClientForm({ onSuccess, client, clientTypes, onClientTypeAdde
               <FormItem><FormLabel>Correo Electrónico (Opcional)</FormLabel><FormControl><Input placeholder="nombre@ejemplo.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
             )} />
             <FormField control={form.control} name="phone" render={({ field }) => (
-              <FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input placeholder="809-123-4567" {...field} /></FormControl><FormMessage /></FormItem>
+              <FormItem>
+                <FormLabel>Teléfono</FormLabel>
+                <FormControl>
+                  <PhoneInputComponent
+                    placeholder="809-123-4567"
+                    {...field}
+                    onChange={(value: string) => field.onChange(value || "")}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )} />
             <FormField control={form.control} name="rnc" render={({ field }) => (
               <FormItem>

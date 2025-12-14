@@ -259,5 +259,6 @@ export interface UserProfile {
   isActive: boolean;
   rnc?: string;
   companyName?: string;
+  phoneNumber?: string; // E.164 format
 }
 

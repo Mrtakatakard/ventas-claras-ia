@@ -79,6 +79,7 @@ export const createAccount = onCall({ maxInstances: 10 }, async (request) => {
                 status: 'active',
                 createdAt: new Date(),
                 isActive: true,
+                phoneNumber: request.data.phoneNumber || '', // Save phone number
             };
 
             // Execute Writes
